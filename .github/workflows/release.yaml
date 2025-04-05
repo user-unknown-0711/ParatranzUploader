@@ -1,0 +1,71 @@
+name: release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: tool-jx3/Assets
+          path: Assets
+      - name: Setup golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - run: go version
+
+      - name: Build
+        run: go build
+
+      - name: show folder
+        run: |
+          pwd
+          ls -la
+
+      - name: List files
+        run: bash ./script/list_all_file_to_change.sh A
+
+      - name: Run export
+        run: ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -export en
+
+      - name: Get current date
+        id: date
+        run: echo "tag=$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Generate full_hash
+        id: hash
+        run: |
+          TIMESTAMP_HASH=$(date -u +%s | sha256sum | head -c 3)
+          COMMIT_HASH=$(git log -1 --pretty=format:%h | head -c 3)
+          FULL_HASH="${TIMESTAMP_HASH}${COMMIT_HASH}"
+          echo "full_hash=$FULL_HASH" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release_dump_${{ env.tag }}_${{ env.full_hash }}
+          path: dump/
+
+      - name: Compress to zip
+        run: cd export && zip -r "LTM_arch_${{ env.tag }}_${{ env.full_hash }}.zip" Hant
+
+      - name: Delete existing release and tag
+        run: gh release delete ${{ env.tag }} --cleanup-tag --yes || true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.tag }}
+          name: Release ${{ env.tag }}
+          body: |
+            - v${{ env.tag }} arch update
+            - Build Hash: ${{ env.full_hash }}
+          draft: false
+          prerelease: false
+          files: "export/LTM_${{env.tag}}_${{env.full_hash}}.zip"
