@@ -14,12 +14,18 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	exportRoot = "export/Hant"
+)
+
 var (
 	token  = ""
 	paraid = 0
 
 	assetsUpdate = false
 	syncid       = 0
+
+	exportFromAssets = ""
 )
 
 func init() {
@@ -28,6 +34,8 @@ func init() {
 
 	flag.BoolVar(&assetsUpdate, "update", false, "update from assets")
 	flag.IntVar(&syncid, "sync-from", 0, "sync project's translation from this id")
+
+	flag.StringVar(&exportFromAssets, "export", "", "export assets from kr or en or jp")
 
 	flag.Parse()
 }
@@ -44,6 +52,103 @@ func main() {
 
 	if syncid != 0 {
 		syncTran()
+	}
+
+	if exportFromAssets != "" {
+		exportFromAssets = strings.ToLower(exportFromAssets)
+		exportAssets(exportFromAssets)
+	}
+}
+
+func exportAssets(langType string) {
+	zap.S().Infoln("Start export translation assets from lang:", langType)
+
+	os.MkdirAll(exportRoot, os.ModePerm)
+
+	h := NewParatranzHandler(paraid, token)
+
+	m, err := h.GetFiles()
+	if err != nil {
+		zap.S().Fatalln("GetFiles error", paraid, err)
+	}
+
+	filelistpath := filepath.Join("dump", langType+"_files.txt")
+
+	b, err := os.ReadFile(filelistpath)
+	if err != nil {
+		zap.S().Fatalln("read fail", filelistpath, err)
+	}
+
+	lines := strings.Split(string(b), "\n")
+
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		sp := strings.Split(line, "\t")
+		if len(sp) < 2 {
+			zap.S().Fatalln("files.txt splie error:", line)
+		}
+
+		tranpath, tranname := getLangTranPath(sp[1], langType)
+		fulltranpath := filepath.Join(tranpath, tranname)
+		if f, has := m[fulltranpath]; has {
+			export(h, langType, tranpath, tranname, &f)
+		} else {
+			export(h, langType, tranpath, tranname, nil)
+		}
+	}
+}
+
+func export(h *ParatranzHandler, langType, tranfolder, tranname string, paraFile *ParatranzFile) {
+	zap.S().Infoln("Start export", tranfolder, tranname)
+
+	assetsPath := filepath.Join("Assets", langType, tranfolder, strings.ToUpper(langType)+"_"+tranname)
+	assetsRawData, assetsPMData := getPMData(assetsPath)
+
+	os.MkdirAll(filepath.Join(exportRoot, tranfolder), os.ModePerm)
+
+	if paraFile == nil {
+		zap.S().Warnln("paratranz missing file", tranfolder, tranname)
+		err := os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), assetsRawData, os.ModePerm)
+		if err != nil {
+			zap.S().Fatalln("export WriteFile fail", assetsPath, err)
+		}
+		return
+	}
+
+	var fromTrans []ParatranzTranslation
+
+	for {
+		trans, err := h.GetTranslation(paraFile.ID)
+		if err != nil {
+			if err.Error() == ParatranzRetry {
+				zap.S().Errorln("GetTranslation retry", err)
+				time.Sleep(time.Second * 30)
+				continue
+			}
+			zap.S().Fatalln("GetTranslation", err)
+		}
+		fromTrans = trans
+		break
+	}
+
+	m := map[string]string{}
+
+	for _, t := range fromTrans {
+		m[t.Key] = strings.ReplaceAll(t.Translation, "\\n", "\n")
+	}
+
+	assetsPMData.setFromTranMap(m)
+
+	b, err := JSONMarshal(assetsPMData)
+	if err != nil {
+		zap.S().Fatalln("JSONMarshal", err)
+	}
+
+	err = os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), b, os.ModePerm)
+	if err != nil {
+		zap.S().Fatalln("export WriteFile fail", assetsPath, err)
 	}
 }
 
@@ -63,6 +168,10 @@ func syncTran() {
 	}
 
 	for k, v := range m {
+		if v.Total == v.Translated {
+			// skip all translated file
+			continue
+		}
 		if sourcev, has := sourcem[k]; has {
 			updateTran(sourceh, h, sourcev, v)
 		}
@@ -112,6 +221,9 @@ func updateTran(from, to *ParatranzHandler, fromFile, toFile ParatranzFile) {
 			if ft.Translation != "" {
 				toTrans[i].Translation = ft.Translation
 				toTrans[i].Stage = ft.Stage
+				if ft.Stage == -1 {
+					toTrans[i].Stage = 1
+				}
 			} else {
 				toTrans[i].Translation = ft.Original
 				toTrans[i].Stage = 1
@@ -148,9 +260,9 @@ func updateFromAssets() {
 		zap.S().Fatalln("GetFiles error", err)
 	}
 
-	b, err := os.ReadFile("dump/files.txt")
+	b, err := os.ReadFile("dump/kr_files.txt")
 	if err != nil {
-		zap.S().Fatalln("read dump/files.txt fail", err)
+		zap.S().Fatalln("read dump/kr_files.txt fail", err)
 	}
 
 	lines := strings.Split(string(b), "\n")
@@ -193,23 +305,23 @@ type PMData struct {
 	DataList []map[string]any `json:"dataList"`
 }
 
-func recursionPMData(v any, keys []string, m map[string]string) {
+func recursionGetPMData(v any, keys []string, m map[string]string) {
 	switch vt := v.(type) {
 	case string:
 		m[strings.Join(keys, "->")] = vt
 	case []map[string]any:
 		for i, mapv := range vt {
 			for k, subv := range mapv {
-				recursionPMData(subv, append(keys, strconv.Itoa(i), k), m)
+				recursionGetPMData(subv, append(keys, strconv.Itoa(i), k), m)
 			}
 		}
 	case map[string]any:
 		for k, subv := range vt {
-			recursionPMData(subv, append(keys, k), m)
+			recursionGetPMData(subv, append(keys, k), m)
 		}
 	case []any:
 		for i, subv := range vt {
-			recursionPMData(subv, append(keys, strconv.Itoa(i)), m)
+			recursionGetPMData(subv, append(keys, strconv.Itoa(i)), m)
 		}
 	default:
 		// do nothing
@@ -219,8 +331,42 @@ func recursionPMData(v any, keys []string, m map[string]string) {
 func (pm *PMData) getTranMap() map[string]string {
 	m := map[string]string{}
 	keys := []string{"dataList"}
-	recursionPMData(pm.DataList, keys, m)
+	recursionGetPMData(pm.DataList, keys, m)
 	return m
+}
+
+func recursionSetPMData(v any, keys []string, m map[string]string) (string, bool) {
+	switch vt := v.(type) {
+	case string:
+		return m[strings.Join(keys, "->")], true
+	case []map[string]any:
+		for i, mapv := range vt {
+			for k, subv := range mapv {
+				if setv, ok := recursionSetPMData(subv, append(keys, strconv.Itoa(i), k), m); ok {
+					vt[i][k] = setv
+				}
+			}
+		}
+	case map[string]any:
+		for k, subv := range vt {
+			if setv, ok := recursionSetPMData(subv, append(keys, k), m); ok {
+				vt[k] = setv
+			}
+		}
+	case []any:
+		for i, subv := range vt {
+			if setv, ok := recursionSetPMData(subv, append(keys, strconv.Itoa(i)), m); ok {
+				vt[i] = setv
+			}
+		}
+	default:
+	}
+	return "", false
+}
+
+func (pm *PMData) setFromTranMap(m map[string]string) {
+	keys := []string{"dataList"}
+	recursionSetPMData(pm.DataList, keys, m)
 }
 
 func getPMData(filepath string) ([]byte, *PMData) {
@@ -385,9 +531,13 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 }
 
 func getTranPath(krpath string) (filder string, name string) {
-	krpath = krpath[3:]
-	filder = filepath.Dir(krpath)
-	name = strings.TrimPrefix(filepath.Base(krpath), "KR_")
+	return getLangTranPath(krpath, "kr")
+}
+
+func getLangTranPath(assetspath string, langType string) (filder string, name string) {
+	assetspath = assetspath[3:]
+	filder = filepath.Dir(assetspath)
+	name = strings.TrimPrefix(filepath.Base(assetspath), strings.ToUpper(langType)+"_")
 	return filder, name
 }
 
