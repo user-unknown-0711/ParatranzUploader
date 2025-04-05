@@ -53,7 +53,7 @@ jobs:
           path: dump/
 
       - name: Compress to zip
-        run: cd export && zip -r "LTM_arch_${{ env.tag }}_${{ env.full_hash }}.zip" Hant
+        run: cd export && zip -r "LTM_${{ env.tag }}_${{ env.full_hash }}.zip" Hant
 
       - name: Delete existing release and tag
         run: gh release delete ${{ env.tag }} --cleanup-tag --yes || true
