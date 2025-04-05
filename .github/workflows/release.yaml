@@ -30,7 +30,7 @@ jobs:
           ls -la
 
       - name: List files
-        run: bash ./script/list_all_file_to_change.sh A
+        run: bash ./scripts/list_all_file_to_change.sh A
 
       - name: Run export
         run: ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -export en
