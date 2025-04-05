@@ -1,0 +1,49 @@
+name: sync assets to paratranz
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [sync-from-assets]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: tool-jx3/Assets
+          path: Assets
+      - name: Setup golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - run: go version
+
+      - name: Build
+        run: go build
+
+      - name: List files
+        run: bash ./scripts/list_diff_files.sh
+
+      - name: Run update
+        run: ./ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -update
+
+      - name: Get current date
+        id: date
+        run: echo "tag=$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Generate full_hash
+        id: hash
+        run: |
+          TIMESTAMP_HASH=$(date -u +%s | sha256sum | head -c 3)
+          COMMIT_HASH=$(git log -1 --pretty=format:%h | head -c 3)
+          FULL_HASH="${TIMESTAMP_HASH}${COMMIT_HASH}"
+          echo "full_hash=$FULL_HASH" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sync_dump_${{ env.tag }}_${{ env.full_hash }}
+          path: dump/

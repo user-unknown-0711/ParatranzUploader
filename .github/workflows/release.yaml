@@ -24,11 +24,6 @@ jobs:
       - name: Build
         run: go build
 
-      - name: show folder
-        run: |
-          pwd
-          ls -la
-
       - name: List files
         run: bash ./scripts/list_all_file_to_change.sh A
 
