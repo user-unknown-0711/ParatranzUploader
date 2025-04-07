@@ -26,6 +26,7 @@ var (
 	syncid       = 0
 
 	exportFromAssets = ""
+	replacefile      = ""
 )
 
 func init() {
@@ -36,6 +37,7 @@ func init() {
 	flag.IntVar(&syncid, "sync-from", 0, "sync project's translation from this id")
 
 	flag.StringVar(&exportFromAssets, "export", "", "export assets from kr or en or jp")
+	flag.StringVar(&replacefile, "replace", "", "replace translation from file")
 
 	flag.Parse()
 }
@@ -57,6 +59,85 @@ func main() {
 	if exportFromAssets != "" {
 		exportFromAssets = strings.ToLower(exportFromAssets)
 		exportAssets(exportFromAssets)
+	}
+
+	if replacefile != "" {
+		replaceFromFile(replacefile)
+	}
+}
+
+func replaceFromFile(replacefile string) {
+	zap.S().Infoln("Start replace translation from file:", replacefile)
+
+	b, err := os.ReadFile(replacefile)
+	if err != nil {
+		zap.S().Fatalln("read replace file error", replacefile, err)
+	}
+
+	rmap := map[string]string{}
+	list := strings.Split(string(b), "\n")
+	for _, row := range list {
+		sp := strings.Split(row, "|")
+		if len(sp) != 2 {
+			zap.S().Fatalln("replace file parser error", row, err)
+		}
+		rmap[sp[0]] = sp[1]
+	}
+
+	h := NewParatranzHandler(paraid, token)
+
+	m, err := h.GetFiles()
+	if err != nil {
+		zap.S().Fatalln("GetFiles error", paraid, err)
+	}
+
+	for _, f := range m {
+		var paraTrans []ParatranzTranslation
+		for {
+			trans, err := h.GetTranslation(f.ID)
+			if err != nil {
+				if err.Error() == ParatranzRetry {
+					zap.S().Errorln("GetTranslation retry", err)
+					time.Sleep(time.Second * 30)
+					continue
+				}
+				zap.S().Fatalln("GetTranslation", err)
+			}
+			paraTrans = trans
+			break
+		}
+
+		hasChange := false
+		for i, t := range paraTrans {
+			for from, to := range rmap {
+				if strings.Contains(t.Translation, from) {
+					hasChange = true
+					paraTrans[i].Translation = strings.ReplaceAll(t.Translation, from, to)
+				}
+			}
+		}
+
+		if hasChange {
+			zap.S().Infoln("change translation", f.Name)
+
+			b, err := JSONMarshal(paraTrans)
+			if err != nil {
+				zap.S().Fatalln("JSONMarshal", err)
+			}
+
+			for {
+				err := h.UpdateTranslation(f.ID, b, f.Name, true, false)
+				if err != nil {
+					if err.Error() == ParatranzRetry {
+						zap.S().Errorln("UpdateTranslation retry", err)
+						time.Sleep(time.Second * 30)
+						continue
+					}
+					zap.S().Fatalln("UpdateTranslation", err)
+				}
+				break
+			}
+		}
 	}
 }
 
