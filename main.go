@@ -112,7 +112,7 @@ func replaceFromFile(replacefile string) {
 			for from, to := range rmap {
 				if strings.Contains(t.Translation, from) {
 					hasChange = true
-					paraTrans[i].Translation = strings.ReplaceAll(t.Translation, from, to)
+					paraTrans[i].Translation = strings.ReplaceAll(paraTrans[i].Translation, from, to)
 				}
 			}
 		}
