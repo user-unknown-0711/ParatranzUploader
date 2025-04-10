@@ -55,7 +55,7 @@ jobs:
         run: cd export && zip -r "LTM_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: download font
-        run: bash ./scripts/copy_font.sh
+        run: bash ./scripts/download_font.sh
 
       - name: Compress with font to zip
         run: cd export && zip -r "LTM_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
