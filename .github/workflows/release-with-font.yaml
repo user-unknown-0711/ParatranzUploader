@@ -28,9 +28,6 @@ jobs:
       - name: List files
         run: bash ./scripts/list_all_file_to_change.sh A
 
-      - name: Trim en_files.txt if not in TEST
-        run: sed -i '2,$d' ./dump/en_files.txt
-
       - name: Run export
         run: ./ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -export en
 
