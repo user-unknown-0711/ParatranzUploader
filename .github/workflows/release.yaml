@@ -55,6 +55,8 @@ jobs:
 
       - name: Delete existing release and tag
         run: gh release delete ${{ env.tag }} --cleanup-tag --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
