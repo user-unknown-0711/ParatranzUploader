@@ -76,5 +76,5 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            "export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip"
-            "export/LTM_complete_${{env.tag}}_${{env.full_hash}}.zip"
+            export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip
+            export/LTM_complete_${{env.tag}}_${{env.full_hash}}.zip
