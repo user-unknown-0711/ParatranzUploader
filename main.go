@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	exportRoot = "export/Hant"
+	exportRoot = "export/LimbusCompany_Data/Lang/TW"
 )
 
 var (

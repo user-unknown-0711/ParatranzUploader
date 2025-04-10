@@ -1,9 +1,7 @@
-name: release
+name: release with font
 
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types: [release-from-assets]
 
 jobs:
   release:
@@ -51,7 +49,13 @@ jobs:
           path: dump/
 
       - name: Compress to zip
-        run: cd export && zip -r "LTM_${{ env.tag }}_${{ env.full_hash }}.zip" Hant
+        run: cd export && zip -r "LTM_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+
+      - name: download font
+        run: bash ./scripts/download_font.sh
+
+      - name: Compress with font to zip
+        run: cd export && zip -r "LTM_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: Delete existing release and tag
         run: gh release delete ${{ env.tag }} --cleanup-tag --yes || true
@@ -66,4 +70,6 @@ jobs:
             - Build Hash: ${{ env.full_hash }}
           draft: false
           prerelease: false
-          files: "export/LTM_${{env.tag}}_${{env.full_hash}}.zip"
+          files: |
+            "export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip"
+            "export/LTM_complete_${{env.tag}}_${{env.full_hash}}.zip"
