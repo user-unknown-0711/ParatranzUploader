@@ -4,3 +4,5 @@ export/
 file_diff.txt
 last_sha.txt
 ParatranzUploader
+scripts/copy_local_assets.sh
+files/replace_text.txt
