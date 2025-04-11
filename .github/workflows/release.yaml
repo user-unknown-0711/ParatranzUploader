@@ -30,6 +30,10 @@ jobs:
       - name: List files
         run: bash ./scripts/list_all_file_to_change.sh A
 
+      - name: Filter for test
+        if: ${{ vars.IS_TEST == 'true' }}
+        run: sed -i '2,$d' ./dump/en_files.txt
+
       - name: Run export
         run: ./ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -export en
 
@@ -51,7 +55,7 @@ jobs:
           path: dump/
 
       - name: Compress to zip
-        run: cd export && zip -r "LTM_${{ env.tag }}_${{ env.full_hash }}.zip" Hant
+        run: cd export && zip -r "LTM_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: Delete existing release and tag
         run: gh release delete ${{ env.tag }} --cleanup-tag --yes || true
@@ -64,8 +68,8 @@ jobs:
           tag_name: ${{ env.tag }}
           name: Release ${{ env.tag }}
           body: |
-            - v${{ env.tag }} arch update
+            - v${{ env.tag }} text update
             - Build Hash: ${{ env.full_hash }}
           draft: false
           prerelease: false
-          files: "export/LTM_${{env.tag}}_${{env.full_hash}}.zip"
+          files: "export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip"
