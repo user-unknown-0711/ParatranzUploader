@@ -670,11 +670,12 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		enContext := enTran[tran.Key]
 		jpContext := jpTran[tran.Key]
 
-		if tran.Original == enContext {
+		if tran.Original == enContext && tran.Stage != -1 {
 			continue
 		}
-		filetrans[i].Context = fmt.Sprintf("EN:%s\n\nJP:%s", enContext, jpContext)
+		filetrans[i].Context = fmt.Sprintf("EN:\n%s\n\nJP:\n%s", enContext, jpContext)
 		if tran.Stage == -1 {
+			filetrans[i].Stage = 0
 			hides = append(hides, filetrans[i])
 		}
 	}
@@ -714,7 +715,7 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		}
 
 		for {
-			err := h.UpdateTranslation(pf.ID, hidetranb, pf.Name, true, false)
+			err := h.UpdateTranslation(pf.ID, hidetranb, pf.Name, true, true)
 			if err != nil {
 				if err.Error() == ParatranzRetry {
 					zap.S().Warnln("UpdateTranslation retry", krPath, err)
