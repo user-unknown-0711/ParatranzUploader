@@ -32,8 +32,11 @@ jobs:
         if: ${{ vars.IS_TEST == 'true' }}
         run: sed -i '2,$d' ./dump/en_files.txt
 
+      - name: Download Paratranz artifact
+        run: bash ./scripts/download_artifact.sh ${{ secrets.PARA_PROJECT_ID }} ${{ secrets.PARA_TOKEN }}
+
       - name: Run export
-        run: ./ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -export en
+        run: ./ParatranzUploader -export en -from-artifact
 
       - name: Get current date
         id: date

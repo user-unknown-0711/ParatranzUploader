@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -25,8 +26,9 @@ var (
 	assetsUpdate = false
 	syncid       = 0
 
-	exportFromAssets = ""
-	replacefile      = ""
+	exportFromAssets   = ""
+	exportWithArtifact = false
+	replacefile        = ""
 )
 
 func init() {
@@ -37,6 +39,7 @@ func init() {
 	flag.IntVar(&syncid, "sync-from", 0, "sync project's translation from this id")
 
 	flag.StringVar(&exportFromAssets, "export", "", "export assets from kr or en or jp")
+	flag.BoolVar(&exportWithArtifact, "from-artifact", false, "export use downloaded artifact")
 	flag.StringVar(&replacefile, "replace", "", "replace translation from file")
 
 	flag.Parse()
@@ -57,8 +60,12 @@ func main() {
 	}
 
 	if exportFromAssets != "" {
-		exportFromAssets = strings.ToLower(exportFromAssets)
-		exportAssets(exportFromAssets)
+		fromLang := strings.ToLower(exportFromAssets)
+		if exportWithArtifact {
+			exportAssetsWithArtifact(fromLang)
+		} else {
+			exportAssets(fromLang)
+		}
 	}
 
 	if replacefile != "" {
@@ -137,6 +144,82 @@ func replaceFromFile(replacefile string) {
 				}
 				break
 			}
+		}
+	}
+}
+
+func exportAssetsWithArtifact(langType string) {
+	zap.S().Infoln("Start use artifact export translation assets from lang:", langType)
+
+	os.MkdirAll(exportRoot, os.ModePerm)
+
+	filelistpath := filepath.Join("dump", langType+"_files.txt")
+
+	b, err := os.ReadFile(filelistpath)
+	if err != nil {
+		zap.S().Fatalln("read fail", filelistpath, err)
+	}
+
+	artifactRoot := "download/raw"
+
+	lines := strings.Split(string(b), "\n")
+
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		sp := strings.Split(line, "\t")
+		if len(sp) < 2 {
+			zap.S().Fatalln("files.txt splie error:", line)
+		}
+
+		tranfolder, tranname := getLangTranPath(sp[1], langType)
+
+		artifactfilepath := filepath.Join(artifactRoot, tranfolder, tranname) + ".json"
+
+		zap.S().Infoln("Start export", tranfolder, tranname)
+
+		assetsPath := filepath.Join("Assets", langType, tranfolder, strings.ToUpper(langType)+"_"+tranname)
+		assetsRawData, assetsPMData := getPMData(assetsPath)
+
+		os.MkdirAll(filepath.Join(exportRoot, tranfolder), os.ModePerm)
+
+		if _, err := os.Stat(artifactfilepath); errors.Is(err, os.ErrNotExist) {
+			err := os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), assetsRawData, os.ModePerm)
+			if err != nil {
+				zap.S().Fatalln("export WriteFile fail", assetsPath, err)
+			}
+			continue
+		}
+
+		b, err := os.ReadFile(artifactfilepath)
+		if err != nil {
+			zap.S().Fatalln("export read artifact file fail", artifactfilepath, err)
+		}
+
+		fromTrans := []ParatranzTranslation{}
+
+		err = json.Unmarshal(b, &fromTrans)
+		if err != nil {
+			zap.S().Fatalln("export Unmarshal artifact fail", artifactfilepath, err)
+		}
+
+		m := map[string]string{}
+
+		for _, t := range fromTrans {
+			m[t.Key] = strings.ReplaceAll(t.Translation, "\\n", "\n")
+		}
+
+		assetsPMData.setFromTranMap(m)
+
+		b, err = JSONMarshal(assetsPMData)
+		if err != nil {
+			zap.S().Fatalln("JSONMarshal", err)
+		}
+
+		err = os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), b, os.ModePerm)
+		if err != nil {
+			zap.S().Fatalln("export WriteFile fail", assetsPath, err)
 		}
 	}
 }

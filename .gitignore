@@ -1,6 +1,8 @@
 Assets/
 dump/
 export/
+download/
+
 file_diff.txt
 last_sha.txt
 ParatranzUploader
