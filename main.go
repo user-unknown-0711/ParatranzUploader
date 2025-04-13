@@ -84,11 +84,11 @@ func replaceFromFile(replacefile string) {
 	rmap := map[string]string{}
 	list := strings.Split(string(b), "\n")
 	for _, row := range list {
-		sp := strings.Split(row, "|")
-		if len(sp) != 2 {
+		before, after, found := strings.Cut(row, "|")
+		if !found {
 			zap.S().Fatalln("replace file parser error", row, err)
 		}
-		rmap[sp[0]] = sp[1]
+		rmap[before] = after
 	}
 
 	h := NewParatranzHandler(paraid, token)
@@ -100,18 +100,14 @@ func replaceFromFile(replacefile string) {
 
 	for _, f := range m {
 		var paraTrans []ParatranzTranslation
-		for {
+		err := retryWithBackoff(func() error {
 			trans, err := h.GetTranslation(f.ID)
-			if err != nil {
-				if err.Error() == ParatranzRetry {
-					zap.S().Warnln("GetTranslation retry", err)
-					time.Sleep(time.Second * 30)
-					continue
-				}
-				zap.S().Fatalln("GetTranslation", err)
-			}
 			paraTrans = trans
-			break
+			return err
+		})
+
+		if err != nil {
+			zap.S().Fatalln("GetTranslation", err)
 		}
 
 		hasChange := false
@@ -132,17 +128,12 @@ func replaceFromFile(replacefile string) {
 				zap.S().Fatalln("JSONMarshal", err)
 			}
 
-			for {
-				err := h.UpdateTranslation(f.ID, b, f.Name, true, false)
-				if err != nil {
-					if err.Error() == ParatranzRetry {
-						zap.S().Warnln("UpdateTranslation retry", err)
-						time.Sleep(time.Second * 30)
-						continue
-					}
-					zap.S().Fatalln("UpdateTranslation", err)
-				}
-				break
+			err = retryWithBackoff(func() error {
+				return h.UpdateTranslation(f.ID, b, f.Name, true, false)
+			})
+
+			if err != nil {
+				zap.S().Fatalln("UpdateTranslation", err)
 			}
 		}
 	}
@@ -170,7 +161,7 @@ func exportAssetsWithArtifact(langType string) {
 		}
 		sp := strings.Split(line, "\t")
 		if len(sp) < 2 {
-			zap.S().Fatalln("files.txt splie error:", line)
+			zap.S().Fatalln("files.txt split error:", line)
 		}
 
 		tranfolder, tranname := getLangTranPath(sp[1], langType)
@@ -251,7 +242,7 @@ func exportAssets(langType string) {
 		}
 		sp := strings.Split(line, "\t")
 		if len(sp) < 2 {
-			zap.S().Fatalln("files.txt splie error:", line)
+			zap.S().Fatalln("files.txt split error:", line)
 		}
 
 		tranpath, tranname := getLangTranPath(sp[1], langType)
@@ -283,18 +274,13 @@ func export(h *ParatranzHandler, langType, tranfolder, tranname string, paraFile
 
 	var fromTrans []ParatranzTranslation
 
-	for {
+	err := retryWithBackoff(func() error {
 		trans, err := h.GetTranslation(paraFile.ID)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("GetTranslation retry", err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-			zap.S().Fatalln("GetTranslation", err)
-		}
 		fromTrans = trans
-		break
+		return err
+	})
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", err)
 	}
 
 	m := map[string]string{}
@@ -346,32 +332,24 @@ func updateTran(from, to *ParatranzHandler, fromFile, toFile ParatranzFile) {
 	zap.S().Infoln("updateTran", toFile.Name)
 	var fromTrans, toTrans []ParatranzTranslation
 
-	for {
+	err := retryWithBackoff(func() error {
 		trans, err := from.GetTranslation(fromFile.ID)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("GetTranslation retry", err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-			zap.S().Fatalln("GetTranslation", err)
-		}
 		fromTrans = trans
-		break
+		return err
+	})
+
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", err)
 	}
 
-	for {
+	err = retryWithBackoff(func() error {
 		trans, err := to.GetTranslation(toFile.ID)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("GetTranslation retry", err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-			zap.S().Fatalln("GetTranslation", err)
-		}
 		toTrans = trans
-		break
+		return err
+	})
+
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", err)
 	}
 
 	m := map[string]ParatranzTranslation{}
@@ -401,18 +379,14 @@ func updateTran(from, to *ParatranzHandler, fromFile, toFile ParatranzFile) {
 		zap.S().Fatalln("JSONMarshal", err)
 	}
 
-	for {
-		err := to.UpdateTranslation(toFile.ID, d, filepath.Base(toFile.Name), true, true)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("UpdateTranslation retry", err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-			zap.S().Fatalln("UpdateTranslation", err)
-		}
-		break
+	err = retryWithBackoff(func() error {
+		return to.UpdateTranslation(toFile.ID, d, filepath.Base(toFile.Name), true, true)
+	})
+
+	if err != nil {
+		zap.S().Fatalln("UpdateTranslation", err)
 	}
+
 }
 
 func updateFromAssets() {
@@ -437,7 +411,7 @@ func updateFromAssets() {
 		}
 		sp := strings.Split(line, "\t")
 		if len(sp) < 2 {
-			zap.S().Fatalln("files.txt splie error:", line)
+			zap.S().Fatalln("files.txt split error:", line)
 		}
 
 		filetype := sp[0]
@@ -557,24 +531,18 @@ func create(h *ParatranzHandler, tranfolder, tranname string) {
 	var parafile *ParatranzFile
 
 	// upload new file
-	for {
+	err := retryWithBackoff(func() error {
 		f, err := h.UploadFile(krRawData, tranfolder, tranname)
-
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("UploadFile retry", krPath, err)
-				time.Sleep(time.Second * 30)
-				continue
-			} else if err.Error() == ParatranzEmptySkip {
-				zap.S().Warnln("UploadFile empty skip", krPath, err)
-				return
-			}
-
-			zap.S().Fatalln("UploadFile fial", krPath, err)
-		}
-
 		parafile = f
-		break
+		return err
+	})
+
+	if err != nil {
+		if err.Error() == ParatranzEmptySkip {
+			zap.S().Warnln("UploadFile empty skip", krPath, err)
+			return
+		}
+		zap.S().Fatalln("UploadFile fial", krPath, err)
 	}
 
 	// update context
@@ -584,20 +552,12 @@ func create(h *ParatranzHandler, tranfolder, tranname string) {
 func delete(h *ParatranzHandler, pf ParatranzFile) {
 	zap.S().Infoln("delete", pf.Name, pf.ID)
 
-	for {
-		err := h.DeleteFile(pf.ID)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("delete DeleteFile retry", pf.Name, pf.ID, err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-
-			zap.S().Fatalln("upload DeleteFile fial", pf.ID, err)
-		}
-		break
+	err := retryWithBackoff(func() error {
+		return h.DeleteFile(pf.ID)
+	})
+	if err != nil {
+		zap.S().Fatalln("upload DeleteFile fial", pf.ID, err)
 	}
-
 }
 
 func update(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) {
@@ -613,23 +573,17 @@ func update(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) 
 	}
 
 	// upload new file
-	for {
+	err := retryWithBackoff(func() error {
 		err := h.UpdateFile(pf.ID, krRawData, tranfolder, tranname, false)
+		return err
+	})
 
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("UpdateFile retry", krPath, err)
-				time.Sleep(time.Second * 30)
-				continue
-			} else if err.Error() == ParatranzEmptySkip {
-				zap.S().Errorln("UpdateFile empty skip", krPath, err)
-				return
-			}
-
-			zap.S().Fatalln("UpdateFile fial", krPath, err)
+	if err != nil {
+		if err.Error() == ParatranzEmptySkip {
+			zap.S().Errorln("UpdateFile empty skip", krPath, err)
+			return
 		}
-
-		break
+		zap.S().Fatalln("UpdateFile fial", krPath, err)
 	}
 
 	updateContext(h, pf, tranfolder, tranname)
@@ -644,18 +598,14 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 
 	var filetrans []ParatranzTranslation
 
-	for {
+	err := retryWithBackoff(func() error {
 		trans, err := h.GetTranslation(pf.ID)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("GetTranslation retry", krPath, err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-			zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
-		}
 		filetrans = trans
-		break
+		return err
+	})
+
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
 	}
 
 	_, enPMData := getPMData(enPath)
@@ -685,17 +635,12 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		zap.S().Fatalln("JSONMarshal", pf.Name, pf.ID, filetrans, err)
 	}
 
-	for {
-		err := h.UpdateFile(pf.ID, tranb, tranfolder, tranname, true)
-		if err != nil {
-			if err.Error() == ParatranzRetry {
-				zap.S().Warnln("UpdateFile retry", krPath, err)
-				time.Sleep(time.Second * 30)
-				continue
-			}
-			zap.S().Fatalln("UpdateFile fial", krPath, err)
-		}
-		break
+	err = retryWithBackoff(func() error {
+		return h.UpdateFile(pf.ID, tranb, tranfolder, tranname, true)
+	})
+
+	if err != nil {
+		zap.S().Fatalln("UpdateFile fial", krPath, err)
 	}
 
 	// fix html tag hilds
@@ -714,17 +659,11 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 			zap.S().Fatalln("JSONMarshal", pf.Name, pf.ID, hides, err)
 		}
 
-		for {
-			err := h.UpdateTranslation(pf.ID, hidetranb, pf.Name, true, true)
-			if err != nil {
-				if err.Error() == ParatranzRetry {
-					zap.S().Warnln("UpdateTranslation retry", krPath, err)
-					time.Sleep(time.Second * 30)
-					continue
-				}
-				zap.S().Fatalln("UpdateTranslation fial", krPath, err)
-			}
-			break
+		err = retryWithBackoff(func() error {
+			return h.UpdateTranslation(pf.ID, hidetranb, pf.Name, true, true)
+		})
+		if err != nil {
+			zap.S().Fatalln("UpdateTranslation fial", krPath, err)
 		}
 	}
 
@@ -747,4 +686,15 @@ func JSONMarshal(t interface{}) ([]byte, error) {
 	encoder.SetEscapeHTML(false)
 	err := encoder.Encode(t)
 	return buffer.Bytes(), err
+}
+
+func retryWithBackoff(fn func() error) error {
+	for {
+		err := fn()
+		if err == nil || err.Error() != ParatranzRetry {
+			return err
+		}
+		zap.S().Warnln("retrying after error:", err)
+		time.Sleep(30 * time.Second)
+	}
 }
