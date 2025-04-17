@@ -2,6 +2,8 @@
 
 cd "$(dirname "$0")" && cd ..
 
-mkdir -p export/LimbusCompany_Data/Lang/TW/Font
+mkdir -p export/LimbusCompany_Data/Lang/TW/Font/Context
+mkdir -p export/LimbusCompany_Data/Lang/TW/Font/Title
 
-cp fonts/* export/LimbusCompany_Data/Lang/TW/Font/
+cp fonts/SarasaGothicTC-Bold.ttf export/LimbusCompany_Data/Lang/TW/Font/Context/Context.ttf
+cp fonts/SarasaGothicTC-Bold.ttf export/LimbusCompany_Data/Lang/TW/Font/Title/Title.ttf

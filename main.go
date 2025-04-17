@@ -55,9 +55,9 @@ func main() {
 		updateFromAssets()
 	}
 
-	if syncid != 0 {
-		syncTran()
-	}
+	// if syncid != 0 {
+	// 	syncTran()
+	// }
 
 	if exportFromAssets != "" {
 		fromLang := strings.ToLower(exportFromAssets)
