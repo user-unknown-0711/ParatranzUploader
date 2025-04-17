@@ -26,3 +26,4 @@ jobs:
           name: paratranz_artifact_${{ env.tag }}
           path: download/raw/
           compression-level: 9
+          retention-days: 22
