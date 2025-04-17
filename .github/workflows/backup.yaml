@@ -7,7 +7,7 @@ on:
     - cron: '30 21 * * 3'  # Wednesday 21:30 UTC = Thursday 05:30 UTC+8
 
 jobs:
-  release:
+  backup:
 
     runs-on: ubuntu-latest
 
