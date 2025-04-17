@@ -1,0 +1,28 @@
+name: backup paratranz's artifact
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '30 21 * * 3'  # Wednesday 21:30 UTC = Thursday 05:30 UTC+8
+
+jobs:
+  release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Paratranz artifact
+        run: bash ./scripts/download_artifact.sh ${{ secrets.PARA_PROJECT_ID }} ${{ secrets.PARA_TOKEN }}
+
+      - name: Get current date
+        id: date
+        run: echo "tag=$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paratranz_artifact_${{ env.tag }}
+          path: download/utf8/
+          compression-level: 9
