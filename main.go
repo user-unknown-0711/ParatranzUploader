@@ -110,20 +110,25 @@ func replaceFromFile(replacefile string) {
 			zap.S().Fatalln("GetTranslation", err)
 		}
 
-		hasChange := false
+		changeset := map[int]bool{}
 		for i, t := range paraTrans {
 			for from, to := range rmap {
 				if strings.Contains(t.Translation, from) {
-					hasChange = true
+					changeset[i] = true
 					paraTrans[i].Translation = strings.ReplaceAll(paraTrans[i].Translation, from, to)
 				}
 			}
 		}
 
-		if hasChange {
-			zap.S().Infoln("change translation", f.Name)
+		if len(changeset) > 0 {
+			zap.S().Infoln("change translation", f.Name, len(changeset))
 
-			b, err := JSONMarshal(paraTrans)
+			updateTrans := []ParatranzTranslation{}
+			for i := range changeset {
+				updateTrans = append(updateTrans, paraTrans[i])
+			}
+
+			b, err := JSONMarshal(updateTrans)
 			if err != nil {
 				zap.S().Fatalln("JSONMarshal", err)
 			}
