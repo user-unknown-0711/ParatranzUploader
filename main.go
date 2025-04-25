@@ -410,6 +410,8 @@ func updateFromAssets() {
 
 	lines := strings.Split(string(b), "\n")
 
+	updated := map[string]bool{}
+
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -422,6 +424,7 @@ func updateFromAssets() {
 		filetype := sp[0]
 		tranpath, tranname := getTranPath(sp[1])
 		fulltranpath := filepath.Join(tranpath, tranname)
+		updated[fulltranpath] = true
 
 		switch filetype {
 		case "A":
@@ -438,6 +441,78 @@ func updateFromAssets() {
 			if f, has := m[fulltranpath]; has {
 				delete(h, f)
 			}
+		default:
+			zap.S().Errorln("error filetype", filetype, tranpath, tranname)
+		}
+	}
+
+	enb, err := os.ReadFile("dump/en_files.txt")
+	if err != nil {
+		zap.S().Fatalln("read dump/en_files.txt fail", err)
+	}
+
+	enlines := strings.Split(string(enb), "\n")
+
+	for _, line := range enlines {
+		if len(line) == 0 {
+			continue
+		}
+		sp := strings.Split(line, "\t")
+		if len(sp) < 2 {
+			zap.S().Fatalln("files.txt split error:", line)
+		}
+
+		filetype := sp[0]
+		tranpath, tranname := getLangTranPath(sp[1], "en")
+		fulltranpath := filepath.Join(tranpath, tranname)
+		if _, has := updated[fulltranpath]; has {
+			continue
+		}
+		updated[fulltranpath] = true
+
+		switch filetype {
+		case "A":
+		case "M":
+			if f, has := m[fulltranpath]; has {
+				updateContext(h, f, tranpath, tranname)
+			}
+		case "D":
+		default:
+			zap.S().Errorln("error filetype", filetype, tranpath, tranname)
+		}
+	}
+
+	jpb, err := os.ReadFile("dump/en_files.txt")
+	if err != nil {
+		zap.S().Fatalln("read dump/en_files.txt fail", err)
+	}
+
+	jplines := strings.Split(string(jpb), "\n")
+
+	for _, line := range jplines {
+		if len(line) == 0 {
+			continue
+		}
+		sp := strings.Split(line, "\t")
+		if len(sp) < 2 {
+			zap.S().Fatalln("files.txt split error:", line)
+		}
+
+		filetype := sp[0]
+		tranpath, tranname := getLangTranPath(sp[1], "jp")
+		fulltranpath := filepath.Join(tranpath, tranname)
+		if _, has := updated[fulltranpath]; has {
+			continue
+		}
+		updated[fulltranpath] = true
+
+		switch filetype {
+		case "A":
+		case "M":
+			if f, has := m[fulltranpath]; has {
+				updateContext(h, f, tranpath, tranname)
+			}
+		case "D":
 		default:
 			zap.S().Errorln("error filetype", filetype, tranpath, tranname)
 		}
