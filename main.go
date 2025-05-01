@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -206,7 +207,7 @@ func exportAssetsWithArtifact(langType string) {
 		m := map[string]string{}
 
 		for _, t := range fromTrans {
-			m[t.Key] = strings.ReplaceAll(t.Translation, "\\n", "\n")
+			m[t.Key] = strings.ReplaceAll(html.UnescapeString(t.Translation), "\\n", "\n")
 		}
 
 		assetsPMData.setFromTranMap(m)
