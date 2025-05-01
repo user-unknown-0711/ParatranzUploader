@@ -23,8 +23,10 @@ var (
 	token  = ""
 	paraid = 0
 
-	assetsUpdate = false
-	syncid       = 0
+	assetsUpdate        = false
+	assetsContextUpdate = false
+
+	syncid = 0
 
 	exportFromAssets   = ""
 	exportWithArtifact = false
@@ -36,6 +38,7 @@ func init() {
 	flag.StringVar(&token, "token", "", "paratranz token")
 
 	flag.BoolVar(&assetsUpdate, "update", false, "update from assets")
+	flag.BoolVar(&assetsContextUpdate, "update-context", false, "update context from assets")
 	flag.IntVar(&syncid, "sync-from", 0, "sync project's translation from this id")
 
 	flag.StringVar(&exportFromAssets, "export", "", "export assets from kr or en or jp")
@@ -444,6 +447,10 @@ func updateFromAssets() {
 		default:
 			zap.S().Errorln("error filetype", filetype, tranpath, tranname)
 		}
+	}
+
+	if !assetsContextUpdate {
+		return
 	}
 
 	enb, err := os.ReadFile("dump/en_files.txt")
