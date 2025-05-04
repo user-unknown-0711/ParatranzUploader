@@ -10,6 +10,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Delete existing complete release and tag
+        run: gh release delete complete --cleanup-tag --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - uses: actions/checkout@v4
         with:
           repository: tool-jx3/Assets
@@ -66,11 +72,6 @@ jobs:
 
       - name: Compress with font to zip
         run: cd export && zip -r "LTM_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
-
-      - name: Delete existing complete release and tag
-        run: gh release delete complete --cleanup-tag --yes || true
-        env:
-          GH_TOKEN: ${{ github.token }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
