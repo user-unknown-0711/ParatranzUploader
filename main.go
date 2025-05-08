@@ -568,6 +568,9 @@ func recursionSetPMData(v any, keys []string, m map[string]string) (string, bool
 	case []map[string]any:
 		for i, mapv := range vt {
 			for k, subv := range mapv {
+				if k == "id" || k == "model" {
+					continue
+				}
 				if setv, ok := recursionSetPMData(subv, append(keys, strconv.Itoa(i), k), m); ok {
 					vt[i][k] = setv
 				}
@@ -575,6 +578,9 @@ func recursionSetPMData(v any, keys []string, m map[string]string) (string, bool
 		}
 	case map[string]any:
 		for k, subv := range vt {
+			if k == "id" || k == "model" {
+				continue
+			}
 			if setv, ok := recursionSetPMData(subv, append(keys, k), m); ok {
 				vt[k] = setv
 			}
