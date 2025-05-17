@@ -32,6 +32,8 @@ var (
 	exportFromAssets   = ""
 	exportWithArtifact = false
 	replacefile        = ""
+
+	reseteol = false
 )
 
 func init() {
@@ -45,6 +47,7 @@ func init() {
 	flag.StringVar(&exportFromAssets, "export", "", "export assets from kr or en or jp")
 	flag.BoolVar(&exportWithArtifact, "from-artifact", false, "export use downloaded artifact")
 	flag.StringVar(&replacefile, "replace", "", "replace translation from file")
+	flag.BoolVar(&reseteol, "reset-eol", false, "reset end of line from files")
 
 	flag.Parse()
 }
@@ -75,6 +78,60 @@ func main() {
 	if replacefile != "" {
 		replaceFromFile(replacefile)
 	}
+
+	// if reseteol {
+	// 	resetEOL()
+	// }
+}
+
+func resetEOL() {
+	zap.S().Infoln("Start reset end of line")
+
+	artifactRoot := "download/raw/"
+
+	b, err := os.ReadFile(filepath.Join("dump/space_files.txt"))
+	if err != nil {
+		zap.S().Fatalln("read replace file error", replacefile, err)
+	}
+
+	list := strings.Split(string(b), "\n")
+
+	h := NewParatranzHandler(paraid, token)
+
+	m, err := h.GetFiles()
+	if err != nil {
+		zap.S().Fatalln("GetFiles error", paraid, err)
+	}
+
+	for _, name := range list {
+		paraname := strings.TrimSuffix(strings.TrimPrefix(name, artifactRoot), ".json")
+
+		if para, has := m[paraname]; has {
+			fmt.Println(name, para.ID, para.Folder, para.Name)
+			bfile, err := os.ReadFile(name)
+			if err != nil {
+				zap.S().Fatalln("GetFiles error", paraid, err)
+			}
+
+			err = retryWithBackoff(func() error {
+				return h.UpdateFile(para.ID, bfile, para.Folder, para.Name, true)
+			})
+
+			if err != nil {
+				zap.S().Fatalln("UpdateFile error", para.Name, err)
+			}
+
+			err = retryWithBackoff(func() error {
+				return h.UpdateTranslation(para.ID, bfile, para.Name, true, false)
+			})
+
+			if err != nil {
+				zap.S().Fatalln("UpdateTranslation error", para.Name, err)
+			}
+
+		}
+	}
+
 }
 
 func replaceFromFile(replacefile string) {
