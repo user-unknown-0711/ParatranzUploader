@@ -166,9 +166,7 @@ func (h *ParatranzHandler) UpdateFile(id int, data []byte, folder, name string, 
 	}
 	fw, _ := writer.CreateFormFile("file", name)
 	fw.Write(data)
-	if folder != "." {
-		writer.WriteField("path", folder)
-	}
+
 	err := writer.Close()
 	if err != nil {
 		fmt.Println(err)
