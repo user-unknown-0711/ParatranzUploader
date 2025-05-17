@@ -153,45 +153,36 @@ func exportAssetsWithArtifact(langType string) {
 
 	os.MkdirAll(exportRoot, os.ModePerm)
 
-	filelistpath := filepath.Join("dump", langType+"_files.txt")
-
-	b, err := os.ReadFile(filelistpath)
-	if err != nil {
-		zap.S().Fatalln("read fail", filelistpath, err)
-	}
-
 	artifactRoot := "download/raw"
 
-	lines := strings.Split(string(b), "\n")
+	raws, err := os.ReadDir(artifactRoot)
 
-	for _, line := range lines {
-		if len(line) == 0 {
-			continue
-		}
-		sp := strings.Split(line, "\t")
-		if len(sp) < 2 {
-			zap.S().Fatalln("files.txt split error:", line)
-		}
+	if err != nil {
+		zap.S().Fatalln("read fail", artifactRoot, err)
+	}
 
-		tranfolder, tranname := getLangTranPath(sp[1], langType)
+	process := func(folder, name string) {
+		assetsname := strings.TrimSuffix(name, ".json")
+		zap.S().Infoln("Start export", folder, assetsname)
 
-		artifactfilepath := filepath.Join(artifactRoot, tranfolder, tranname) + ".json"
+		artifactfilepath := filepath.Join(artifactRoot, folder, name)
+		krfilepath := filepath.Join("Assets", "kr", folder, "KR_"+assetsname)
+		enfilepath := filepath.Join("Assets", langType, folder, strings.ToUpper(langType)+"_"+assetsname)
 
-		zap.S().Infoln("Start export", tranfolder, tranname)
-
-		assetsPath := filepath.Join("Assets", langType, tranfolder, strings.ToUpper(langType)+"_"+tranname)
-		assetsRawData, assetsPMData := getPMData(assetsPath)
-
-		os.MkdirAll(filepath.Join(exportRoot, tranfolder), os.ModePerm)
-
-		if _, err := os.Stat(artifactfilepath); errors.Is(err, os.ErrNotExist) {
-			err := os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), assetsRawData, os.ModePerm)
-			if err != nil {
-				zap.S().Fatalln("export WriteFile fail", assetsPath, err)
-			}
-			continue
+		if folder != "" {
+			os.MkdirAll(filepath.Join(exportRoot, folder), os.ModePerm)
 		}
 
+		_, krPMData, _ := getPMData(krfilepath)
+		_, enPMData, enerr := getPMData(enfilepath)
+
+		// setup lang
+		if enerr == nil {
+			enm := enPMData.getTranMap()
+			krPMData.setFromTranMap(enm)
+		}
+
+		// setup para
 		b, err := os.ReadFile(artifactfilepath)
 		if err != nil {
 			zap.S().Fatalln("export read artifact file fail", artifactfilepath, err)
@@ -210,17 +201,69 @@ func exportAssetsWithArtifact(langType string) {
 			m[t.Key] = strings.ReplaceAll(html.UnescapeString(t.Translation), "\\n", "\n")
 		}
 
-		assetsPMData.setFromTranMap(m)
+		krPMData.setFromTranMap(m)
 
-		b, err = JSONMarshal(assetsPMData)
+		b, err = JSONMarshal(krPMData)
 		if err != nil {
 			zap.S().Fatalln("JSONMarshal", err)
 		}
 
-		err = os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), b, os.ModePerm)
+		err = os.WriteFile(filepath.Join(exportRoot, folder, assetsname), b, os.ModePerm)
 		if err != nil {
-			zap.S().Fatalln("export WriteFile fail", assetsPath, err)
+			zap.S().Fatalln("export WriteFile fail", artifactfilepath, err)
 		}
+	}
+
+	for _, raw := range raws {
+		if raw.IsDir() {
+			folder := raw.Name()
+			subraws, err := os.ReadDir(filepath.Join(artifactRoot, folder))
+			if err != nil {
+				zap.S().Fatalln("read fail", artifactRoot, folder, err)
+			}
+			for _, subraw := range subraws {
+				process(folder, subraw.Name())
+			}
+			continue
+		}
+		process("", raw.Name())
+	}
+
+	filelistpath := filepath.Join("dump", langType+"_files.txt")
+
+	b, err := os.ReadFile(filelistpath)
+	if err != nil {
+		zap.S().Fatalln("read fail", filelistpath, err)
+	}
+
+	lines := strings.Split(string(b), "\n")
+
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		sp := strings.Split(line, "\t")
+		if len(sp) < 2 {
+			zap.S().Fatalln("files.txt split error:", line)
+		}
+
+		tranfolder, tranname := getLangTranPath(sp[1], langType)
+
+		artifactfilepath := filepath.Join(artifactRoot, tranfolder, tranname) + ".json"
+
+		assetsPath := filepath.Join("Assets", langType, tranfolder, strings.ToUpper(langType)+"_"+tranname)
+		assetsRawData, _, _ := getPMData(assetsPath)
+
+		os.MkdirAll(filepath.Join(exportRoot, tranfolder), os.ModePerm)
+
+		if _, err := os.Stat(artifactfilepath); errors.Is(err, os.ErrNotExist) {
+			zap.S().Infoln("Start export from", langType, tranfolder, tranname)
+			err := os.WriteFile(filepath.Join(exportRoot, tranfolder, tranname), assetsRawData, os.ModePerm)
+			if err != nil {
+				zap.S().Fatalln("export WriteFile fail", assetsPath, err)
+			}
+		}
+
 	}
 }
 
@@ -268,7 +311,7 @@ func export(h *ParatranzHandler, langType, tranfolder, tranname string, paraFile
 	zap.S().Infoln("Start export", tranfolder, tranname)
 
 	assetsPath := filepath.Join("Assets", langType, tranfolder, strings.ToUpper(langType)+"_"+tranname)
-	assetsRawData, assetsPMData := getPMData(assetsPath)
+	assetsRawData, assetsPMData, _ := getPMData(assetsPath)
 
 	os.MkdirAll(filepath.Join(exportRoot, tranfolder), os.ModePerm)
 
@@ -601,21 +644,26 @@ func (pm *PMData) setFromTranMap(m map[string]string) {
 	recursionSetPMData(pm.DataList, keys, m)
 }
 
-func getPMData(filepath string) ([]byte, *PMData) {
-	RawData, _ := os.ReadFile(filepath)
+func getPMData(filepath string) ([]byte, *PMData, error) {
+	RawData, err := os.ReadFile(filepath)
+	if err != nil {
+		zap.S().Errorln("ReadFile error", filepath, err)
+		return nil, nil, err
+	}
+
 	pm := PMData{}
-	err := json.Unmarshal(RawData, &pm)
+	err = json.Unmarshal(RawData, &pm)
 	if err != nil {
 		zap.S().Fatalln("Unmarshal error", filepath, err)
 	}
-	return RawData, &pm
+	return RawData, &pm, nil
 }
 
 func create(h *ParatranzHandler, tranfolder, tranname string) {
 	zap.S().Infoln("create", tranfolder, tranname)
 	krPath := filepath.Join("Assets/kr", tranfolder, "KR_"+tranname)
 
-	krRawData, krPMData := getPMData(krPath)
+	krRawData, krPMData, _ := getPMData(krPath)
 
 	if len(krPMData.DataList) == 0 {
 		zap.S().Errorln("skip empty file", krPath)
@@ -659,7 +707,7 @@ func update(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) 
 
 	krPath := filepath.Join("Assets/kr", tranfolder, "KR_"+tranname)
 
-	krRawData, krPMData := getPMData(krPath)
+	krRawData, krPMData, _ := getPMData(krPath)
 
 	if len(krPMData.DataList) == 0 {
 		zap.S().Errorln("skip empty file", krPath)
@@ -702,8 +750,8 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
 	}
 
-	_, enPMData := getPMData(enPath)
-	_, jpPMData := getPMData(jpPath)
+	_, enPMData, _ := getPMData(enPath)
+	_, jpPMData, _ := getPMData(jpPath)
 
 	enTran := enPMData.getTranMap()
 	jpTran := jpPMData.getTranMap()
