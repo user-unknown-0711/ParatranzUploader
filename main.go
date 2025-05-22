@@ -230,7 +230,13 @@ func exportAssetsWithArtifact(langType string) {
 			os.MkdirAll(filepath.Join(exportRoot, folder), os.ModePerm)
 		}
 
-		_, krPMData, _ := getPMData(krfilepath)
+		_, krPMData, krerr := getPMData(krfilepath)
+
+		if krerr != nil {
+			zap.S().Errorw("missing assets file", "path", krfilepath)
+			return
+		}
+
 		_, enPMData, enerr := getPMData(enfilepath)
 
 		// setup lang
