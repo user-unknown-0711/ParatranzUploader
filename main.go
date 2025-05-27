@@ -481,11 +481,13 @@ func updateTran(from, to *ParatranzHandler, fromFile, toFile ParatranzFile) {
 				if ft.Stage == -1 {
 					toTrans[i].Stage = 1
 				}
-			} else {
+			} else if strings.HasSuffix(t.Key, "->id") || strings.HasSuffix(t.Key, "->model") {
 				toTrans[i].Translation = ft.Original
 				toTrans[i].Stage = 1
+			} else {
+				toTrans[i].Translation = ""
+				toTrans[i].Stage = 0
 			}
-
 		}
 	}
 
@@ -813,11 +815,17 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
 	}
 
-	_, enPMData, _ := getPMData(enPath)
-	_, jpPMData, _ := getPMData(jpPath)
+	_, enPMData, enerr := getPMData(enPath)
+	_, jpPMData, jperr := getPMData(jpPath)
 
-	enTran := enPMData.getTranMap()
-	jpTran := jpPMData.getTranMap()
+	enTran := map[string]string{}
+	if enerr == nil {
+		enTran = enPMData.getTranMap()
+	}
+	jpTran := map[string]string{}
+	if jperr == nil {
+		jpTran = jpPMData.getTranMap()
+	}
 
 	hides := []ParatranzTranslation{}
 
