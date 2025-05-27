@@ -827,23 +827,33 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		jpTran = jpPMData.getTranMap()
 	}
 
-	hides := []ParatranzTranslation{}
-
+	forces := []ParatranzTranslation{}
 	for i, tran := range filetrans {
 		enContext := enTran[tran.Key]
 		jpContext := jpTran[tran.Key]
 
-		if tran.Original == enContext && tran.Stage != -1 {
+		// id and model skip context
+		if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
 			continue
 		}
 		filetrans[i].Context = fmt.Sprintf("EN:\n%s\n\nJP:\n%s", enContext, jpContext)
-		if tran.Stage == -1 {
-			filetrans[i].Stage = 0
-			hides = append(hides, filetrans[i])
+	}
+
+	finaltrans := []ParatranzTranslation{}
+
+	for _, tran := range filetrans {
+		if tran.Original != "" {
+			finaltrans = append(finaltrans, tran)
+			if tran.Stage == -1 {
+				forces = append(forces, tran)
+			} else if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
+				tran.Translation = tran.Original
+				forces = append(forces, tran)
+			}
 		}
 	}
 
-	tranb, err := JSONMarshal(filetrans)
+	tranb, err := JSONMarshal(finaltrans)
 	if err != nil {
 		zap.S().Fatalln("JSONMarshal", pf.Name, pf.ID, filetrans, err)
 	}
@@ -856,20 +866,20 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		zap.S().Fatalln("UpdateFile fial", krPath, err)
 	}
 
-	// fix html tag hilds
-	if len(hides) != 0 {
-		zap.S().Infoln("fix html tag hides count", len(hides))
+	// fix forces
+	if len(forces) != 0 {
+		zap.S().Infoln("fix forces count", len(forces))
 
-		for i, tran := range hides {
-			hides[i].Stage = 0
+		for i, tran := range forces {
+			forces[i].Stage = 0
 			if tran.Translation != "" {
-				hides[i].Stage = 1
+				forces[i].Stage = 1
 			}
 		}
 
-		hidetranb, err := JSONMarshal(hides)
+		hidetranb, err := JSONMarshal(forces)
 		if err != nil {
-			zap.S().Fatalln("JSONMarshal", pf.Name, pf.ID, hides, err)
+			zap.S().Fatalln("JSONMarshal", pf.Name, pf.ID, forces, err)
 		}
 
 		err = retryWithBackoff(func() error {
