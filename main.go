@@ -833,7 +833,8 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		jpContext := jpTran[tran.Key]
 
 		// id and model skip context
-		if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
+		if tran.Original == enContext && tran.Original == jpContext &&
+			(strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model")) {
 			continue
 		}
 		filetrans[i].Context = fmt.Sprintf("EN:\n%s\n\nJP:\n%s", enContext, jpContext)
@@ -847,8 +848,10 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 			if tran.Stage == -1 {
 				forces = append(forces, tran)
 			} else if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
-				tran.Translation = tran.Original
-				forces = append(forces, tran)
+				if tran.Translation == "" && tran.Stage == 0 {
+					tran.Translation = tran.Original
+					forces = append(forces, tran)
+				}
 			}
 		}
 	}
