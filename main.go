@@ -935,7 +935,7 @@ func fixFileShift(h *ParatranzHandler, pf ParatranzFile, oldtrans []ParatranzTra
 	fixtrans := []ParatranzTranslation{}
 
 	for _, t := range newtrans {
-		if t.Stage == 0 && t.Translation != "" && !strings.HasSuffix(t.Key, "->id") && !strings.HasSuffix(t.Key, "->model") {
+		if t.Stage == 0 && !strings.HasSuffix(t.Key, "->id") && !strings.HasSuffix(t.Key, "->model") {
 			if v, match := m[t.Original]; match {
 				t.Translation = v
 				fixtrans = append(fixtrans, t)
