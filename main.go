@@ -779,8 +779,20 @@ func update(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) 
 		return
 	}
 
-	// upload new file
+	var oldtrans []ParatranzTranslation
+
 	err := retryWithBackoff(func() error {
+		trans, err := h.GetTranslation(pf.ID)
+		oldtrans = trans
+		return err
+	})
+
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
+	}
+
+	// upload new file
+	err = retryWithBackoff(func() error {
 		err := h.UpdateFile(pf.ID, krRawData, tranfolder, tranname, false)
 		return err
 	})
@@ -794,6 +806,8 @@ func update(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) 
 	}
 
 	updateContext(h, pf, tranfolder, tranname)
+
+	fixFileShift(h, pf, oldtrans, tranfolder, tranname)
 }
 
 func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) {
@@ -848,7 +862,7 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 			if tran.Stage == -1 {
 				forces = append(forces, tran)
 			} else if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
-				if tran.Translation == "" && tran.Stage == 0 {
+				if tran.Stage == 0 && tran.Original != tran.Translation {
 					tran.Translation = tran.Original
 					forces = append(forces, tran)
 				}
@@ -893,6 +907,60 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		}
 	}
 
+}
+
+func fixFileShift(h *ParatranzHandler, pf ParatranzFile, oldtrans []ParatranzTranslation, tranfolder, tranname string) {
+	zap.S().Infoln("fixFileShift", pf.ID, tranfolder, tranname)
+
+	m := map[string]string{}
+
+	for _, t := range oldtrans {
+		if !strings.HasSuffix(t.Key, "->id") && !strings.HasSuffix(t.Key, "->model") && t.Stage != 0 && t.Translation != "" {
+			m[t.Original] = t.Translation
+		}
+	}
+
+	var newtrans []ParatranzTranslation
+
+	err := retryWithBackoff(func() error {
+		trans, err := h.GetTranslation(pf.ID)
+		newtrans = trans
+		return err
+	})
+
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
+	}
+
+	fixtrans := []ParatranzTranslation{}
+
+	for _, t := range newtrans {
+		if t.Stage == 0 && t.Translation != "" && !strings.HasSuffix(t.Key, "->id") && !strings.HasSuffix(t.Key, "->model") {
+			if v, match := m[t.Original]; match {
+				t.Translation = v
+				fixtrans = append(fixtrans, t)
+			}
+		}
+	}
+
+	if len(fixtrans) == 0 {
+		return
+	}
+
+	zap.S().Infow("fix shift", "count", len(fixtrans))
+
+	b, err := JSONMarshal(fixtrans)
+	if err != nil {
+		zap.S().Fatalln("JSONMarshal", err)
+	}
+
+	err = retryWithBackoff(func() error {
+		return h.UpdateTranslation(pf.ID, b, pf.Name, true, false)
+	})
+
+	if err != nil {
+		zap.S().Fatalln("UpdateTranslation error", pf.Name, err)
+	}
 }
 
 func getTranPath(krpath string) (filder string, name string) {
