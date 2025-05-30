@@ -39,7 +39,7 @@ jobs:
         run: bash ./scripts/list_diff_files.sh
 
       - name: Run update
-        run: ./ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -update
+        run: ./ParatranzUploader -id ${{ secrets.PARA_PROJECT_ID }} -token ${{ secrets.PARA_TOKEN }} -update -update-context
 
       - name: Get current date
         id: date
