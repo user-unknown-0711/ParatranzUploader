@@ -562,6 +562,8 @@ func updateFromAssets() {
 		return
 	}
 
+	zap.S().Info("Start Update Context from EN")
+
 	enb, err := os.ReadFile("dump/en_files.txt")
 	if err != nil {
 		zap.S().Fatalln("read dump/en_files.txt fail", err)
@@ -598,9 +600,11 @@ func updateFromAssets() {
 		}
 	}
 
-	jpb, err := os.ReadFile("dump/en_files.txt")
+	zap.S().Info("Start Update Context from JP")
+
+	jpb, err := os.ReadFile("dump/jp_files.txt")
 	if err != nil {
-		zap.S().Fatalln("read dump/en_files.txt fail", err)
+		zap.S().Fatalln("read dump/jp_files.txt fail", err)
 	}
 
 	jplines := strings.Split(string(jpb), "\n")
