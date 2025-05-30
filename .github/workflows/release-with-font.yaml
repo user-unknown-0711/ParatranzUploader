@@ -16,10 +16,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Check if AssetsRepo is set
+        run: |
+          if [ -z "${{ vars.ASSETS_REPO }}" ]; then
+            echo "Error: ASSETS_REPO is not set"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
-          repository: tool-jx3/Assets
+          repository: ${{ vars.ASSETS_REPO }}
           path: Assets
+
       - name: Setup golang
         uses: actions/setup-go@v5
         with:
