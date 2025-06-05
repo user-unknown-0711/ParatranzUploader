@@ -20,6 +20,11 @@ jobs:
             exit 1
           fi
 
+      - name: Delete existing complete release and tag
+        run: gh release delete complete --cleanup-tag --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - uses: actions/checkout@v4
         with:
           repository: ${{ vars.ASSETS_REPO }}
@@ -51,7 +56,9 @@ jobs:
 
       - name: Get current date
         id: date
-        run: echo "tag=$(date +'%Y%m%d')" >> $GITHUB_ENV
+        run: |
+          echo "tag=$(date +'%s')" >> $GITHUB_ENV
+          echo release_date=$(date -u +%Y-%m-%d) >> $GITHUB_ENV
 
       - name: Generate full_hash
         id: hash
@@ -69,10 +76,17 @@ jobs:
       - name: Compress to zip
         run: cd export && zip -r "LTM_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
-      - name: Delete existing release and tag
-        run: gh release delete ${{ env.tag }} --cleanup-tag --yes || true
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Compress localize files to zip
+        run: cd export/LimbusCompany_Data/Lang/TW/ && zip -r ../../../localize_files.zip .
+
+      - name: Download font
+        run: bash ./scripts/copy_font.sh
+
+      - name: Make config
+        run: bash ./scripts/create_config.sh
+
+      - name: Compress with font to zip
+        run: cd export && zip -r "LTM_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -80,8 +94,24 @@ jobs:
           tag_name: ${{ env.tag }}
           name: Release ${{ env.tag }}
           body: |
-            - v${{ env.tag }} text update
+            - ${{ env.release_date }} v${{ env.tag }} text update
             - Build Hash: ${{ env.full_hash }}
           draft: false
           prerelease: false
-          files: "export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip"
+          files: |
+            export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip
+            export/localize_files.zip
+
+      - name: Create Complete Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: complete
+          name: Release ${{ env.tag }}
+          body: |
+            - ${{ env.release_date }} v${{ env.tag }} complete update
+            - Build Hash: ${{ env.full_hash }}
+          draft: false
+          prerelease: true
+          files: |
+            export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip
+            export/LTM_complete_${{env.tag}}_${{env.full_hash}}.zip
