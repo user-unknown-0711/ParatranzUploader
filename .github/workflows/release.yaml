@@ -20,11 +20,6 @@ jobs:
             exit 1
           fi
 
-      - name: Delete existing complete release and tag
-        run: gh release delete complete --cleanup-tag --yes || true
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - uses: actions/checkout@v4
         with:
           repository: ${{ vars.ASSETS_REPO }}
@@ -74,7 +69,7 @@ jobs:
           path: dump/
 
       - name: Compress to zip
-        run: cd export && zip -r "LTM_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+        run: cd export && zip -r "RHOY_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: Compress localize files to zip
         run: cd export/LimbusCompany_Data/Lang/TW/ && zip -r ../../../localize_files.zip .
@@ -86,32 +81,19 @@ jobs:
         run: bash ./scripts/create_config.sh
 
       - name: Compress with font to zip
-        run: cd export && zip -r "LTM_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+        run: cd export && zip -r "RHOY_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.tag }}
-          name: Release ${{ env.tag }}
+          name: Release ${{ env.release_date }}
           body: |
-            - ${{ env.release_date }} v${{ env.tag }} text update
+            - ${{ env.release_date }} v${{ env.tag }} update
             - Build Hash: ${{ env.full_hash }}
           draft: false
           prerelease: false
           files: |
-            export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip
             export/localize_files.zip
-
-      - name: Create Complete Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: complete
-          name: Release ${{ env.tag }}
-          body: |
-            - ${{ env.release_date }} v${{ env.tag }} complete update
-            - Build Hash: ${{ env.full_hash }}
-          draft: false
-          prerelease: true
-          files: |
-            export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip
-            export/LTM_complete_${{env.tag}}_${{env.full_hash}}.zip
+            export/RHOY_only_text_${{env.tag}}_${{env.full_hash}}.zip
+            export/RHOY_complete_${{env.tag}}_${{env.full_hash}}.zip

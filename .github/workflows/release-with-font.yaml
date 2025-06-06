@@ -70,7 +70,10 @@ jobs:
           path: dump/
 
       - name: Compress to zip
-        run: cd export && zip -r "LTM_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+        run: cd export && zip -r "RHOY_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+
+      - name: Compress localize files to zip
+        run: cd export/LimbusCompany_Data/Lang/TW/ && zip -r ../../../localize_files.zip .
 
       - name: Download font
         run: bash ./scripts/copy_font.sh
@@ -79,7 +82,7 @@ jobs:
         run: bash ./scripts/create_config.sh
 
       - name: Compress with font to zip
-        run: cd export && zip -r "LTM_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+        run: cd export && zip -r "RHOY_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -92,5 +95,6 @@ jobs:
           draft: false
           prerelease: true
           files: |
-            export/LTM_only_text_${{env.tag}}_${{env.full_hash}}.zip
-            export/LTM_complete_${{env.tag}}_${{env.full_hash}}.zip
+            export/localize_files.zip
+            export/RHOY_only_text_${{env.tag}}_${{env.full_hash}}.zip
+            export/RHOY_complete_${{env.tag}}_${{env.full_hash}}.zip
