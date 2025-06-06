@@ -13,8 +13,8 @@
 
 ### 下載檔案
 
-- [自訂語言檔案](https://github.com/user-unknown-0711/ParatranzUploader/releases/latest)
-  - 下載名稱開頭為 `RHOY_complete_` 的 `.zip` 檔案
+- 自訂語言檔案: [latest release](https://github.com/user-unknown-0711/ParatranzUploader/releases/latest)
+  - 下載名稱開頭為 `CLT_complete_` 的 `.zip` 檔案
 
 ### 遊戲安裝位置
 
@@ -37,7 +37,7 @@ Limbus Company 遊戲安裝位置
 
 ### 自訂語言檔案
 
-`RHOY_complete_*.zip` 壓縮檔案內包含以下資料:
+`CLT_complete_*.zip` 壓縮檔案內包含以下資料:
 
 ```text
 LimbusCompany_Data/
