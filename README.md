@@ -12,7 +12,7 @@ Installation instructions are available [here](./docs/install-custom-lt.md).
 
 2. All release JSON content is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**. You can find the full license text [here](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 
-3. The font SarasaGothicTC-Bold.ttf is licensed under the SIL Open Font License, Version 1.1
+3. The font SarasaGothicTC-Bold.ttf is developed and distributed by [be5invis](https://github.com/be5invis/Sarasa-Gothic) under the SIL Open Font License.
 
 ## Acknowledgements
 
