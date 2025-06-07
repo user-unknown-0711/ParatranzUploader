@@ -13,3 +13,7 @@ Installation instructions are available [here](./docs/install-custom-lt.md).
 2. All release JSON content is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**. You can find the full license text [here](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 
 3. The font SarasaGothicTC-Bold.ttf is licensed under the SIL Open Font License, Version 1.1
+
+## Acknowledgements
+
+This project references and builds upon the translation work of [Localize Limbus Company (都市零协会汉化组)](https://github.com/LocalizeLimbusCompany) and [Limbus Traditional Mandarin (LTM繁體中文漢化組)](https://github.com/LimbusTraditionalMandarin). We sincerely thank both communities for their tremendous efforts in localizing Limbus Company, making the game accessible to a wider audience of Chinese-speaking players.
