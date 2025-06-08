@@ -86,7 +86,7 @@ jobs:
       - name: Create ReleaseNotes
         run: |
           echo "- ${{ env.release_date }} v${{ env.tag }} update" >> export/ReleaseNotes.md
-          echo "- Build Hash: ${{ env.full_hash }}\n" >> export/ReleaseNotes.md
+          echo "- Build Hash: ${{ env.full_hash }}" >> export/ReleaseNotes.md
           bash ./scripts/create_release_note.sh ./download/raw/RHOY/Information.json.json
 
       - name: Create Release
