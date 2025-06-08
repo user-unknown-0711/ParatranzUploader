@@ -226,15 +226,15 @@ func exportAssetsWithArtifact(langType string) {
 		krfilepath := filepath.Join("Assets", "kr", folder, "KR_"+assetsname)
 		enfilepath := filepath.Join("Assets", langType, folder, strings.ToUpper(langType)+"_"+assetsname)
 
-		if folder != "" {
-			os.MkdirAll(filepath.Join(exportRoot, folder), os.ModePerm)
-		}
-
 		_, krPMData, krerr := getPMData(krfilepath)
 
 		if krerr != nil {
 			zap.S().Errorw("missing assets file", "path", krfilepath)
 			return
+		}
+
+		if folder != "" {
+			os.MkdirAll(filepath.Join(exportRoot, folder), os.ModePerm)
 		}
 
 		_, enPMData, enerr := getPMData(enfilepath)
