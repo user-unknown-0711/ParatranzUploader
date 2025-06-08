@@ -83,14 +83,18 @@ jobs:
       - name: Compress with font to zip
         run: cd export && zip -r "CLT_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
 
+      - name: Create ReleaseNotes
+        run: |
+          echo "- ${{ env.release_date }} v${{ env.tag }} update" >> export/ReleaseNotes.md
+          echo "- Build Hash: ${{ env.full_hash }}\n" >> export/ReleaseNotes.md
+          bash ./scripts/create_release_note.sh ./download/raw/RHOY/Information.json.json
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.tag }}
           name: Release ${{ env.release_date }}
-          body: |
-            - ${{ env.release_date }} v${{ env.tag }} update
-            - Build Hash: ${{ env.full_hash }}
+          body_path: export/ReleaseNotes.md
           draft: false
           prerelease: false
           files: |
