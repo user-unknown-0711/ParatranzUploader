@@ -91,7 +91,7 @@ jobs:
           bash ./scripts/create_release_note.sh ./download/raw/RHOY/Information.json.json
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           tag_name: ${{ env.tag }}
           name: Release ${{ env.release_date }}
