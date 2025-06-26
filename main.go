@@ -593,6 +593,7 @@ func updateFromAssets() {
 		case "M":
 			if f, has := m[fulltranpath]; has {
 				updateContext(h, f, tranpath, tranname)
+				fixByForces(h, f, tranpath, tranname)
 			}
 		case "D":
 		default:
@@ -631,6 +632,7 @@ func updateFromAssets() {
 		case "M":
 			if f, has := m[fulltranpath]; has {
 				updateContext(h, f, tranpath, tranname)
+				fixByForces(h, f, tranpath, tranname)
 			}
 		case "D":
 		default:
@@ -758,6 +760,7 @@ func create(h *ParatranzHandler, tranfolder, tranname string) {
 
 	// update context
 	updateContext(h, *parafile, tranfolder, tranname)
+	fixByForces(h, *parafile, tranfolder, tranname)
 }
 
 func delete(h *ParatranzHandler, pf ParatranzFile) {
@@ -810,6 +813,7 @@ func update(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) 
 	}
 
 	updateContext(h, pf, tranfolder, tranname)
+	fixByForces(h, pf, tranfolder, tranname)
 
 	fixFileShift(h, pf, oldtrans, tranfolder, tranname)
 }
@@ -845,7 +849,6 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		jpTran = jpPMData.getTranMap()
 	}
 
-	forces := []ParatranzTranslation{}
 	for i, tran := range filetrans {
 		enContext := enTran[tran.Key]
 		jpContext := jpTran[tran.Key]
@@ -863,14 +866,6 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 	for _, tran := range filetrans {
 		if tran.Original != "" {
 			finaltrans = append(finaltrans, tran)
-			if tran.Stage == -1 {
-				forces = append(forces, tran)
-			} else if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
-				if tran.Stage == 0 && tran.Original != tran.Translation {
-					tran.Translation = tran.Original
-					forces = append(forces, tran)
-				}
-			}
 		}
 	}
 
@@ -886,8 +881,39 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 	if err != nil {
 		zap.S().Fatalln("UpdateFile fial", krPath, err)
 	}
+}
 
-	// fix forces
+func fixByForces(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname string) {
+	zap.S().Infoln("fixByForces", pf.ID, tranfolder, tranname)
+
+	var filetrans []ParatranzTranslation
+
+	err := retryWithBackoff(func() error {
+		trans, err := h.GetTranslation(pf.ID)
+		filetrans = trans
+		return err
+	})
+
+	if err != nil {
+		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
+	}
+
+	forces := []ParatranzTranslation{}
+
+	for _, tran := range filetrans {
+		if tran.Original != "" {
+			if tran.Stage == -1 {
+				forces = append(forces, tran)
+				zap.S().Infoln("stage -1:", tran.Key)
+			} else if strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model") {
+				if tran.Stage == 0 && tran.Original != tran.Translation {
+					tran.Translation = tran.Original
+					forces = append(forces, tran)
+				}
+			}
+		}
+	}
+
 	if len(forces) != 0 {
 		zap.S().Infoln("fix forces count", len(forces))
 
@@ -898,16 +924,16 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 			}
 		}
 
-		hidetranb, err := JSONMarshal(forces)
+		tranb, err := JSONMarshal(forces)
 		if err != nil {
 			zap.S().Fatalln("JSONMarshal", pf.Name, pf.ID, forces, err)
 		}
 
 		err = retryWithBackoff(func() error {
-			return h.UpdateTranslation(pf.ID, hidetranb, pf.Name, true, true)
+			return h.UpdateTranslation(pf.ID, tranb, pf.Name, true, true)
 		})
 		if err != nil {
-			zap.S().Fatalln("UpdateTranslation fial", krPath, err)
+			zap.S().Fatalln("UpdateTranslation fial", tranfolder, tranname, err)
 		}
 	}
 
