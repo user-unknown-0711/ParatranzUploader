@@ -10,6 +10,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      CLT_FOLDER_NAME: ${{ vars.CLT_FOLDER_NAME || 'TW' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -68,17 +71,20 @@ jobs:
           name: release_dump_${{ env.tag }}_${{ env.full_hash }}
           path: dump/
 
-      - name: Compress to zip
-        run: cd export && zip -r "CLT_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
-
       - name: Compress localize files to zip
         run: cd export/LimbusCompany_Data/Lang/TW/ && zip -r ../../../localize_files.zip .
 
+      - name: Rename clt folder
+        run: bash ./scripts/rename_clt.sh ${{ env.CLT_FOLDER_NAME }}
+
+      - name: Compress to zip
+        run: cd export && zip -r "CLT_only_text_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
+
       - name: Download font
-        run: bash ./scripts/copy_font.sh
+        run: bash ./scripts/copy_font.sh ${{ env.CLT_FOLDER_NAME }}
 
       - name: Make config
-        run: bash ./scripts/create_config.sh
+        run: bash ./scripts/create_config.sh ${{ env.CLT_FOLDER_NAME }}
 
       - name: Compress with font to zip
         run: cd export && zip -r "CLT_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data

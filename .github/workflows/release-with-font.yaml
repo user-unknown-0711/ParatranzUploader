@@ -76,10 +76,10 @@ jobs:
         run: cd export/LimbusCompany_Data/Lang/TW/ && zip -r ../../../localize_files.zip .
 
       - name: Download font
-        run: bash ./scripts/copy_font.sh
+        run: bash ./scripts/copy_font.sh TW
 
       - name: Make config
-        run: bash ./scripts/create_config.sh
+        run: bash ./scripts/create_config.sh TW
 
       - name: Compress with font to zip
         run: cd export && zip -r "CLT_complete_${{ env.tag }}_${{ env.full_hash }}.zip" LimbusCompany_Data
