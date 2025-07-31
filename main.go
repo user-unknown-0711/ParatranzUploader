@@ -723,7 +723,7 @@ func getPMData(filepath string) ([]byte, *PMData, error) {
 	}
 
 	pm := PMData{}
-	err = json.Unmarshal(RawData, &pm)
+	err = json.Unmarshal(bytes.TrimPrefix(RawData, []byte{0xEF, 0xBB, 0xBF}), &pm)
 	if err != nil {
 		zap.S().Fatalln("Unmarshal error", filepath, err)
 	}
