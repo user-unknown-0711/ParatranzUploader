@@ -678,7 +678,7 @@ func (pm *PMData) getTranMap() map[string]string {
 func recursionSetPMData(v any, keys []string, m map[string]string) (string, bool) {
 	switch vt := v.(type) {
 	case string:
-		return m[strings.Join(keys, "->")], m[strings.Join(keys, "->")] != ""
+		return m[strings.Join(keys, "->")], vt != "" && m[strings.Join(keys, "->")] != ""
 	case []map[string]any:
 		for i, mapv := range vt {
 			for k, subv := range mapv {
