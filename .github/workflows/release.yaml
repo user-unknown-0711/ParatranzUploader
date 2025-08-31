@@ -50,7 +50,7 @@ jobs:
         run: bash ./scripts/download_artifact.sh ${{ secrets.PARA_PROJECT_ID }} ${{ secrets.PARA_TOKEN }}
 
       - name: Run export
-        run: ./ParatranzUploader -export en -from-artifact
+        run: ./ParatranzUploader -export en -from-artifact -id ${{ secrets.PARA_PROJECT_ID }} -id2 ${{ secrets.PARA_PROJECT_ID2 || 0 }}
 
       - name: Get current date
         id: date

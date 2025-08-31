@@ -24,6 +24,8 @@ var (
 	token  = ""
 	paraid = 0
 
+	paraid2 = 0
+
 	assetsUpdate        = false
 	assetsContextUpdate = false
 
@@ -39,6 +41,7 @@ var (
 
 func init() {
 	flag.IntVar(&paraid, "id", 0, "paratranz repo id")
+	flag.IntVar(&paraid2, "id2", 0, "paratranz repo id")
 	flag.StringVar(&token, "token", "", "paratranz token")
 
 	flag.BoolVar(&assetsUpdate, "update", false, "update from assets")
@@ -71,7 +74,7 @@ func main() {
 	if exportFromAssets != "" {
 		fromLang := strings.ToLower(exportFromAssets)
 		if exportWithArtifact {
-			exportAssetsWithArtifact(fromLang)
+			exportAssetsWithArtifact(fromLang, paraid, paraid2)
 		} else {
 			exportAssets(fromLang)
 		}
@@ -211,24 +214,28 @@ func replaceFromFile(replacefile string) {
 	}
 }
 
-func exportAssetsWithArtifact(langType string) {
+func exportAssetsWithArtifact(langType string, id1, id2 int) {
 	zap.S().Infoln("Start use artifact export translation assets from lang:", langType)
 
 	os.MkdirAll(exportRoot, os.ModePerm)
 
-	artifactRoot := "download/raw"
+	artifact1Root := filepath.Join("download", strconv.Itoa(id1), "raw")
+	artifact2Root := ""
+	if id2 != 0 {
+		artifact2Root = filepath.Join("download", strconv.Itoa(id2), "raw")
+	}
 
-	raws, err := os.ReadDir(artifactRoot)
+	raws, err := os.ReadDir(artifact1Root)
 
 	if err != nil {
-		zap.S().Fatalln("read fail", artifactRoot, err)
+		zap.S().Fatalln("read fail", artifact1Root, err)
 	}
 
 	process := func(folder, name string) {
 		assetsname := strings.TrimSuffix(name, ".json")
 		zap.S().Infoln("Start export", folder, assetsname)
 
-		artifactfilepath := filepath.Join(artifactRoot, folder, name)
+		artifact1filepath := filepath.Join(artifact1Root, folder, name)
 		krfilepath := filepath.Join("Assets", "kr", folder, "KR_"+assetsname)
 		enfilepath := filepath.Join("Assets", langType, folder, strings.ToUpper(langType)+"_"+assetsname)
 
@@ -251,44 +258,73 @@ func exportAssetsWithArtifact(langType string) {
 			krPMData.setFromTranMap(enm)
 		}
 
-		// setup para
-		b, err := os.ReadFile(artifactfilepath)
-		if err != nil {
-			zap.S().Fatalln("export read artifact file fail", artifactfilepath, err)
+		// setup para2
+		if artifact2Root != "" {
+			artifact2filepath := filepath.Join(artifact2Root, folder, name)
+			b, err := os.ReadFile(artifact2filepath)
+			if err != nil {
+				zap.S().Warnln("export read artifact2 file fail", artifact2filepath, err)
+				goto PARA2_SKIP
+			}
+
+			fromTrans := []ParatranzTranslation{}
+
+			err = json.Unmarshal(b, &fromTrans)
+			if err != nil {
+				zap.S().Warnln("export Unmarshal artifact2 fail", artifact2filepath, err)
+				goto PARA2_SKIP
+			}
+
+			m := map[string]string{}
+
+			for _, t := range fromTrans {
+				m[t.Key] = strings.ReplaceAll(html.UnescapeString(t.Translation), "\\n", "\n")
+			}
+
+			krPMData.setFromTranMap(m)
+		}
+	PARA2_SKIP:
+
+		// setup para1
+		{
+			b, err := os.ReadFile(artifact1filepath)
+			if err != nil {
+				zap.S().Fatalln("export read artifact file fail", artifact1filepath, err)
+			}
+
+			fromTrans := []ParatranzTranslation{}
+
+			err = json.Unmarshal(b, &fromTrans)
+			if err != nil {
+				zap.S().Fatalln("export Unmarshal artifact fail", artifact1filepath, err)
+			}
+
+			m := map[string]string{}
+
+			for _, t := range fromTrans {
+				m[t.Key] = strings.ReplaceAll(html.UnescapeString(t.Translation), "\\n", "\n")
+			}
+
+			krPMData.setFromTranMap(m)
 		}
 
-		fromTrans := []ParatranzTranslation{}
-
-		err = json.Unmarshal(b, &fromTrans)
-		if err != nil {
-			zap.S().Fatalln("export Unmarshal artifact fail", artifactfilepath, err)
-		}
-
-		m := map[string]string{}
-
-		for _, t := range fromTrans {
-			m[t.Key] = strings.ReplaceAll(html.UnescapeString(t.Translation), "\\n", "\n")
-		}
-
-		krPMData.setFromTranMap(m)
-
-		b, err = JSONMarshal(krPMData)
+		b, err := JSONMarshal(krPMData)
 		if err != nil {
 			zap.S().Fatalln("JSONMarshal", err)
 		}
 
 		err = os.WriteFile(filepath.Join(exportRoot, folder, assetsname), b, os.ModePerm)
 		if err != nil {
-			zap.S().Fatalln("export WriteFile fail", artifactfilepath, err)
+			zap.S().Fatalln("export WriteFile fail", artifact1filepath, err)
 		}
 	}
 
 	for _, raw := range raws {
 		if raw.IsDir() {
 			folder := raw.Name()
-			subraws, err := os.ReadDir(filepath.Join(artifactRoot, folder))
+			subraws, err := os.ReadDir(filepath.Join(artifact1Root, folder))
 			if err != nil {
-				zap.S().Fatalln("read fail", artifactRoot, folder, err)
+				zap.S().Fatalln("read fail", artifact1Root, folder, err)
 			}
 			for _, subraw := range subraws {
 				process(folder, subraw.Name())
@@ -318,7 +354,7 @@ func exportAssetsWithArtifact(langType string) {
 
 		tranfolder, tranname := getLangTranPath(sp[1], langType)
 
-		artifactfilepath := filepath.Join(artifactRoot, tranfolder, tranname) + ".json"
+		artifactfilepath := filepath.Join(artifact1Root, tranfolder, tranname) + ".json"
 
 		assetsPath := filepath.Join("Assets", langType, tranfolder, strings.ToUpper(langType)+"_"+tranname)
 		assetsRawData, _, _ := getPMData(assetsPath)
