@@ -100,7 +100,7 @@ jobs:
           echo "- ${{ env.release_date }} v${{ env.tag }} update" >> export/ReleaseNotes.md
           echo "- Build Hash: ${{ env.full_hash }}" >> export/ReleaseNotes.md
           echo -e "\n---\n" >> export/ReleaseNotes.md
-          bash ./scripts/create_release_note.sh ./download/raw/RHOY/Information.json.json
+          bash ./scripts/create_release_note.sh ./download/${{ secrets.PARA_PROJECT_ID }}/raw/RHOY/Information.json.json
 
       - name: Create Release
         uses: softprops/action-gh-release@v2.2.2
