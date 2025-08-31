@@ -32,6 +32,7 @@ var (
 	exportFromAssets   = ""
 	exportWithArtifact = false
 	replacefile        = ""
+	exportUT           = false
 
 	reseteol = false
 )
@@ -48,6 +49,7 @@ func init() {
 	flag.BoolVar(&exportWithArtifact, "from-artifact", false, "export use downloaded artifact")
 	flag.StringVar(&replacefile, "replace", "", "replace translation from file")
 	flag.BoolVar(&reseteol, "reset-eol", false, "reset end of line from files")
+	flag.BoolVar(&exportUT, "export-untranslate", false, "export untranslate storydata")
 
 	flag.Parse()
 }
@@ -77,6 +79,10 @@ func main() {
 
 	if replacefile != "" {
 		replaceFromFile(replacefile)
+	}
+
+	if exportUT {
+		exportUntranslateStory()
 	}
 
 	// if reseteol {
@@ -1021,4 +1027,88 @@ func retryWithBackoff(fn func() error) error {
 		zap.S().Warnln("retrying after error:", err)
 		time.Sleep(30 * time.Second)
 	}
+}
+
+func exportUntranslateStory() {
+	zap.S().Infoln("Start exportUntranslateStory")
+
+	h := NewParatranzHandler(paraid, token)
+	m, err := h.GetFiles()
+	if err != nil {
+		zap.S().Fatalln("GetFiles error", err)
+	}
+
+	amt := map[string]string{}
+
+	for k, v := range m {
+
+		if !strings.Contains(k, "StoryData") || v.Total == v.Translated {
+			// skip all translated file
+			continue
+		}
+
+		var filetrans []ParatranzTranslation
+
+		mt := map[string]string{}
+
+		err := retryWithBackoff(func() error {
+			trans, err := h.GetTranslation(v.ID)
+			filetrans = trans
+			return err
+		})
+
+		if err != nil {
+			zap.S().Fatalln("GetTranslation", v.Name, v.ID, err)
+		}
+
+		for _, t := range filetrans {
+			if t.Translation != "" || t.Stage != 0 || strings.HasSuffix(t.Key, "->id") || strings.HasSuffix(t.Key, "->model") || strings.HasSuffix(t.Key, "->teacher") {
+				continue
+			}
+
+			mt[t.Original] = ""
+			amt[t.Original] = ""
+		}
+
+		os.MkdirAll(filepath.Join("dump", "UT", v.Folder), os.ModePerm)
+		b, err := JSONMarshal(mt)
+		if err != nil {
+			zap.S().Fatalln("JSONMarshal", err)
+		}
+
+		os.WriteFile(filepath.Join("dump", "UT", v.Name), b, os.ModePerm)
+
+	}
+	b, err := JSONMarshal(amt)
+	if err != nil {
+		zap.S().Fatalln("JSONMarshal", err)
+	}
+	os.WriteFile(filepath.Join("dump", "UT", "ut.json"), b, os.ModePerm)
+
+	sfilename := filepath.Join("dump", "UT", "ut.split.json")
+	os.Remove(sfilename)
+
+	sb := []byte{}
+	smt := map[string]string{}
+	for k := range amt {
+		smt[k] = ""
+		if len(smt) >= 90 {
+			ssb, err := JSONMarshal(smt)
+			if err != nil {
+				zap.S().Fatalln("JSONMarshal", err)
+			}
+			sb = append(sb, ssb...)
+			clear(smt)
+		}
+	}
+
+	if len(smt) != 0 {
+		ssb, err := JSONMarshal(smt)
+		if err != nil {
+			zap.S().Fatalln("JSONMarshal", err)
+		}
+		sb = append(sb, ssb...)
+	}
+
+	os.WriteFile(filepath.Join("dump", "UT", "ut.split.json"), sb, os.ModePerm)
 }
