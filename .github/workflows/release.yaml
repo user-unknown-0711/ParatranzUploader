@@ -49,6 +49,12 @@ jobs:
       - name: Download Paratranz artifact
         run: bash ./scripts/download_artifact.sh ${{ secrets.PARA_PROJECT_ID }} ${{ secrets.PARA_TOKEN }}
 
+      - name: Download Paratranz artifact2
+        run: |
+          if [ -n "${{ secrets.PARA_PROJECT_ID2 }}" ]; then
+            bash ./scripts/download_artifact.sh ${{ secrets.PARA_PROJECT_ID2 }} ${{ secrets.PARA_TOKEN }}
+          fi
+
       - name: Run export
         run: ./ParatranzUploader -export en -from-artifact -id ${{ secrets.PARA_PROJECT_ID }} -id2 ${{ secrets.PARA_PROJECT_ID2 || 0 }}
 
