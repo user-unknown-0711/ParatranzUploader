@@ -308,6 +308,8 @@ func exportAssetsWithArtifact(langType string, id1, id2 int) {
 			krPMData.setFromTranMap(m)
 		}
 
+		hotfix(krPMData, assetsname)
+
 		b, err := JSONMarshal(krPMData)
 		if err != nil {
 			zap.S().Fatalln("JSONMarshal", err)
@@ -369,6 +371,12 @@ func exportAssetsWithArtifact(langType string, id1, id2 int) {
 			}
 		}
 
+	}
+}
+
+func hotfix(pm *PMData, filename string) {
+	if filename == "BattleHint.json" {
+		pm.DataList[34]["id"] = "35"
 	}
 }
 
