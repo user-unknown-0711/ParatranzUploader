@@ -995,15 +995,18 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		zap.S().Fatalln("GetTranslation", pf.Name, pf.ID, err)
 	}
 
+	_, krPMData, _ := getPMData(krPath)
 	_, enPMData, enerr := getPMData(enPath)
 	_, jpPMData, jperr := getPMData(jpPath)
 
 	enTran := map[string]string{}
 	if enerr == nil {
+		alignOrderByID(krPMData, enPMData, enPath)
 		enTran = enPMData.getTranMap()
 	}
 	jpTran := map[string]string{}
 	if jperr == nil {
+		alignOrderByID(krPMData, jpPMData, jpPath)
 		jpTran = jpPMData.getTranMap()
 	}
 
@@ -1014,6 +1017,7 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 		// id and model skip context
 		if tran.Original == enContext && tran.Original == jpContext &&
 			(strings.HasSuffix(tran.Key, "->id") || strings.HasSuffix(tran.Key, "->model")) {
+			filetrans[i].Context = ""
 			continue
 		}
 		filetrans[i].Context = fmt.Sprintf("EN:\n%s\n\nJP:\n%s", enContext, jpContext)
@@ -1039,6 +1043,63 @@ func updateContext(h *ParatranzHandler, pf ParatranzFile, tranfolder, tranname s
 	if err != nil {
 		zap.S().Fatalln("UpdateFile fial", krPath, err)
 	}
+}
+
+// alignOrderByID reorders target.DataList to follow the id order of base.DataList.
+func alignOrderByID(base, target *PMData, targetPath string) {
+	if base == nil || target == nil {
+		return
+	}
+
+	baseIDs := make([]string, len(base.DataList))
+	for i, item := range base.DataList {
+		id, has := item["id"]
+		if !has || id == nil {
+			return
+		}
+		baseIDs[i] = fmt.Sprint(id)
+	}
+
+	same := len(baseIDs) == len(target.DataList)
+	byID := map[string][]map[string]any{}
+	for i, item := range target.DataList {
+		id, has := item["id"]
+		if !has || id == nil {
+			return
+		}
+		sid := fmt.Sprint(id)
+		if same && baseIDs[i] != sid {
+			same = false
+		}
+		byID[sid] = append(byID[sid], item)
+	}
+
+	if same {
+		return
+	}
+
+	zap.S().Infoln("reorder by kr id order", targetPath)
+
+	sorted := make([]map[string]any, 0, len(target.DataList))
+	for _, id := range baseIDs {
+		if items := byID[id]; len(items) > 0 {
+			sorted = append(sorted, items[0])
+			byID[id] = items[1:]
+		} else {
+			// keep index aligned with kr when the id is missing
+			sorted = append(sorted, map[string]any{})
+		}
+	}
+
+	for _, item := range target.DataList {
+		sid := fmt.Sprint(item["id"])
+		if items := byID[sid]; len(items) > 0 {
+			sorted = append(sorted, items[0])
+			byID[sid] = items[1:]
+		}
+	}
+
+	target.DataList = sorted
 }
 
 func shouldSkip(orginal string) bool {
