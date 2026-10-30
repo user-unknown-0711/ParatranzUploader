@@ -1,8 +1,9 @@
 module ParatranzUploader
 
-go 1.22.2
+go 1.23
 
-require (
-	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
-)
+toolchain go1.24.12
+
+require go.uber.org/zap v1.27.0
+
+require go.uber.org/multierr v1.11.0 // indirect

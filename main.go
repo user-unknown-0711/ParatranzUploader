@@ -885,7 +885,7 @@ func getPMData(filepath string) ([]byte, *PMData, error) {
 	if err != nil {
 		zap.S().Fatalln("Unmarshal error", filepath, err)
 	}
-	return RawData, &pm, nil
+	return RawData, &pm, err
 }
 
 func create(h *ParatranzHandler, tranfolder, tranname string) {
@@ -1147,7 +1147,7 @@ func fixFileShift(h *ParatranzHandler, pf ParatranzFile, oldtrans []ParatranzTra
 	}
 
 	err = retryWithBackoff(func() error {
-		return h.UpdateTranslation(pf.ID, b, pf.Name, true, false)
+		return h.UpdateTranslation(pf.ID, b, tranname, true, false)
 	})
 
 	if err != nil {
@@ -1198,14 +1198,14 @@ func exportUntranslateStory() {
 
 	for k, v := range m {
 
-		if !strings.Contains(k, "StoryData") || v.Total == v.Translated {
+		if v.Total == v.Translated {
 			// skip all translated file
 			continue
 		}
 
 		var filetrans []ParatranzTranslation
 
-		mt := map[string]string{}
+		mt := map[string]map[string]string{}
 
 		err := retryWithBackoff(func() error {
 			trans, err := h.GetTranslation(v.ID)
@@ -1222,8 +1222,20 @@ func exportUntranslateStory() {
 				continue
 			}
 
-			mt[t.Original] = ""
-			amt[t.Original] = ""
+			mt[t.Key] = map[string]string{}
+			mt[t.Key]["kr"] = t.Original
+			mt[t.Key]["en"] = ""
+			mt[t.Key]["jp"] = ""
+			sp := strings.Split(t.Context, "\n\nJP:\n")
+			if len(sp) == 2 {
+				mt[t.Key]["en"] = html.UnescapeString(strings.TrimPrefix(sp[0], "EN:\n"))
+				mt[t.Key]["jp"] = html.UnescapeString(sp[1])
+			}
+			mt[t.Key]["tw"] = ""
+
+			if strings.Contains(k, "StoryData") {
+				amt[t.Original] = ""
+			}
 		}
 
 		os.MkdirAll(filepath.Join("dump", "UT", v.Folder), os.ModePerm)
