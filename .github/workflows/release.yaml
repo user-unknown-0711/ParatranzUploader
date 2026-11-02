@@ -56,7 +56,7 @@ jobs:
           fi
 
       - name: Run export
-        run: ./ParatranzUploader -export en -from-artifact -id ${{ secrets.PARA_PROJECT_ID }} -id2 ${{ secrets.PARA_PROJECT_ID2 || 0 }}
+        run: ./ParatranzUploader -export kr -from-artifact -id ${{ secrets.PARA_PROJECT_ID }} -id2 ${{ secrets.PARA_PROJECT_ID2 || 0 }}
 
       - name: Get current date
         id: date

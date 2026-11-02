@@ -344,7 +344,7 @@ func exportAssetsWithArtifact(langType string, id1, id2 int) {
 
 		artifact1filepath := filepath.Join(artifact1Root, folder, name)
 		krfilepath := filepath.Join("Assets", "kr", folder, "KR_"+assetsname)
-		enfilepath := filepath.Join("Assets", langType, folder, strings.ToUpper(langType)+"_"+assetsname)
+		enfilepath := filepath.Join("Assets", "en", folder, strings.ToUpper("en")+"_"+assetsname)
 
 		_, krPMData, krerr := getPMData(krfilepath)
 
