@@ -1,0 +1,50 @@
+{
+  "dataList": [
+    {
+      "id": 0,
+      "place": "4구 뒷골목",
+      "content": "비가 내린다."
+    },
+    {
+      "id": 1,
+      "model": "단테",
+      "teller": "단테",
+      "title": "관리자",
+      "content": "<째깍째깍>"
+    },
+    {
+      "id": 2,
+      "model": "이상",
+      "teller": "이상",
+      "content": "<ruby=날개>날개</ruby>는 꺾였소."
+    },
+    {
+      "id": 3,
+      "place": "림버스 컴퍼니 버스",
+      "content": "버스가 출발한다."
+    },
+    {
+      "id": 4,
+      "model": "파우스트",
+      "teller": "파우스트",
+      "content": "하나 협회에 연락하겠습니다."
+    },
+    {
+      "id": 5,
+      "model": "이상",
+      "content": "…그렇소."
+    },
+    {
+      "id": 6,
+      "model": "단테",
+      "teller": "단테",
+      "content": "중지 작은 아우"
+    },
+    {
+      "id": 7,
+      "model": "단테",
+      "teller": "단테",
+      "content": "중지 작은 아우"
+    }
+  ]
+}

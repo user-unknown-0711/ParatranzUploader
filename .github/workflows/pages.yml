@@ -1,0 +1,137 @@
+name: pages
+
+# After a release (release.yaml or release-with-importllc.yaml ended green), builds the viewer
+# of that release (site/, docs/superpowers/specs/2026-11-05-pages-viewer-design.md) from the
+# release's localize_files.zip and the assets repo (vars.ASSETS_REPO), and deploys it to GitHub
+# Pages. It also runs by hand, for the latest release or for a given tag, and when a person
+# publishes a release. The data of the site is made here and is in no branch.
+# Before the first deployment, Settings > Pages > Source must be "GitHub Actions" (README).
+on:
+  workflow_run:
+    workflows: [release, release-with-importllc]
+    types: [completed]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to show (empty: the latest release)'
+        required: false
+        default: ''
+
+jobs:
+  deploy:
+    # A release run that failed or was cancelled made no release to show.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One deployment at a time; the one that runs is never cancelled.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # The site is built only from what every step made: a step that fails ends the run, and
+    # the site stays as the last deployment left it.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check if AssetsRepo is set
+        run: |
+          if [ -z "${{ vars.ASSETS_REPO }}" ]; then
+            echo "Error: ASSETS_REPO is not set"
+            exit 1
+          fi
+
+      # The release of a manual run is its input, else the latest release; the one of a
+      # published event is that release. The release notes of release.yaml and
+      # release-with-importllc.yaml end with <!-- assets-commit: <sha> -->: the assets
+      # commit the release was built from. Only 40 hex digits are taken from them.
+      - name: Download the release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="${INPUT_TAG:-$EVENT_TAG}"
+          if [ -z "$tag" ]; then
+            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          fi
+          mkdir -p .site/tw
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,name,url,publishedAt,body > .site/release.json
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern localize_files.zip --dir .site
+          unzip -q .site/localize_files.zip -d .site/tw
+          commit=$(jq -r .body .site/release.json | grep -oE 'assets-commit: [0-9a-f]{40}' | head -n 1 | cut -d ' ' -f 2 || true)
+          echo "release $tag; assets commit: ${commit:-not recorded, the default branch is used}"
+          {
+            echo "tag=$tag"
+            echo "assets_commit=$commit"
+          } >> "$GITHUB_OUTPUT"
+
+      # No recorded commit: the default branch, which may be newer than the release.
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.ASSETS_REPO }}
+          ref: ${{ steps.release.outputs.assets_commit }}
+          path: Assets
+          persist-credentials: false
+
+      - name: Describe the source of the data
+        env:
+          ASSETS_REPO: ${{ vars.ASSETS_REPO }}
+          PINNED: ${{ steps.release.outputs.assets_commit != '' }}
+        run: |
+          jq -n \
+            --slurpfile r .site/release.json \
+            --arg repo "$ASSETS_REPO" \
+            --arg commit "$(git -C Assets rev-parse HEAD)" \
+            --argjson pinned "$PINNED" \
+            '{release: {tag: $r[0].tagName, name: $r[0].name, url: $r[0].url, published_at: $r[0].publishedAt},
+              assets: {repo: $repo, commit: $commit, pinned: $pinned}}' > .site/source.json
+          cat .site/source.json
+
+      - name: Setup golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Build
+        run: go build
+
+      - name: Write the data of the site
+        run: ./ParatranzUploader -site site/public/data -site-tw .site/tw -site-assets Assets -site-source .site/source.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: site/.nvmrc
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install the packages of the site
+        run: npm ci
+        working-directory: site
+
+      - name: Build the site
+        run: npm run build
+        working-directory: site
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v5

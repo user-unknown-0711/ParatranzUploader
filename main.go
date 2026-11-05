@@ -39,6 +39,11 @@ var (
 	reseteol = false
 
 	importLLC = false
+
+	siteOut    = ""
+	siteTW     = ""
+	siteAssets = ""
+	siteSrc    = ""
 )
 
 func init() {
@@ -57,10 +62,16 @@ func init() {
 	flag.BoolVar(&exportUT, "export-untranslate", false, "export untranslate storydata")
 	flag.BoolVar(&importLLC, "import-llc", false, "import scenario model codes")
 
-	flag.Parse()
+	flag.StringVar(&siteOut, "site", "", "write the data of the pages site into this directory (emptied first)")
+	flag.StringVar(&siteTW, "site-tw", "release/tw", "directory of the release's TW files (localize_files.zip unzipped)")
+	flag.StringVar(&siteAssets, "site-assets", "Assets", "directory of the assets repo (kr, jp, en)")
+	flag.StringVar(&siteSrc, "site-source", "", "JSON file that names the release and the assets commit of the site data")
 }
 
 func main() {
+	// Parsed here, not in init, so that go test can give its own flags.
+	flag.Parse()
+
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
@@ -97,6 +108,12 @@ func main() {
 
 	if importLLC {
 		importLLCFiles()
+	}
+
+	if siteOut != "" {
+		if err := buildSite(siteOut, siteTW, siteAssets, siteSrc); err != nil {
+			zap.S().Fatalln("build site data fail", err)
+		}
 	}
 }
 

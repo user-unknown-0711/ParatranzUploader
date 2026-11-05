@@ -99,6 +99,8 @@ jobs:
           echo "- Build Hash: ${{ env.full_hash }}" >> export/ReleaseNotes.md
           echo -e "\n---\n" >> export/ReleaseNotes.md
           bash ./scripts/create_release_note.sh ./download/${{ secrets.PARA_PROJECT_ID }}/raw/RHOY/Information.json.json
+          # Hidden in the notes: the assets commit of this release, read by pages.yml.
+          echo -e "\n<!-- assets-commit: $(git -C Assets rev-parse HEAD) -->" >> export/ReleaseNotes.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2.2.2

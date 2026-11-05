@@ -11,3 +11,11 @@ ParatranzUploader
 scripts/copy_local_assets.sh
 files/replace_text.txt
 opencc/dictionary/*.ocd2
+
+# pages site: dependencies, build output and the data pages.yml writes
+site/node_modules/
+site/dist/
+site/public/data/
+.site/
+# the small assets repo of the site's test fixtures
+!site/fixtures/source/Assets/
