@@ -1,0 +1,38 @@
+{
+  "dataList": [
+    {
+      "id": 1,
+      "name": "베기",
+      "desc": "[WhenUse] 대상에게 [Burn] {0} 부여\n<style=\"highlight\">피해량 +10%</style>"
+    },
+    {
+      "id": 2,
+      "name": "찌르기",
+      "desc": "<color=#f8c200>공격</color> 레벨 {0} 증가"
+    },
+    {
+      "id": 3,
+      "name": "막기",
+      "desc": "방어 레벨 +2",
+      "coinlist": [
+        {
+          "coindescs": [
+            {
+              "desc": "[OnSucceedAttack] 출혈 1 부여"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "LCB",
+      "desc": "-"
+    },
+    {
+      "id": 5,
+      "name": "강타",
+      "desc": "<color=#ff0000>강타</color> {0}회"
+    }
+  ]
+}
