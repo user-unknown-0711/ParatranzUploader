@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fixture } from '../testdata'
-import type { CheckItem, Index } from '../types'
-import { filterChecks, filterUntranslated, findingMark, untranslatedCount } from './filter'
+import type { CheckItem, InconsistentItem, Index } from '../types'
+import { filterChecks, filterInconsistent, filterUntranslated, findingMark, jpenCounts, untranslatedCount } from './filter'
 
 const index = fixture<Index>('index.json')
 const items = fixture<{ items: CheckItem[] }>('review/checks.json').items
@@ -59,5 +59,28 @@ describe('findingMark', () => {
 
   it('marks nothing for a finding without tokens', () => {
     expect(findingMark({ code: 'llc', miss: [], extra: [] })).toBeUndefined()
+  })
+})
+
+describe('filterInconsistent', () => {
+  const groups = fixture<{ items: InconsistentItem[] }>('review/inconsistent.json').items
+  const kr = (f: Partial<typeof none>, target?: string) => filterInconsistent(groups, { ...none, ...f }, target).map((c) => c.kr)
+
+  it('narrows by JP/EN class, by group and by any of the texts or keys', () => {
+    expect(kr({})).toEqual(['방어 레벨 +2', '중지 작은 아우'])
+    expect(kr({ sub: 'explained' })).toEqual(['중지 작은 아우'])
+    expect(kr({ group: 'Skills' })).toEqual(['방어 레벨 +2'])
+    expect(kr({ q: 'sister' })).toEqual(['중지 작은 아우'])
+    expect(kr({ q: '防禦等級 +2' })).toEqual(['방어 레벨 +2'])
+    expect(kr({ q: 's9999.json' })).toEqual(['중지 작은 아우'])
+  })
+
+  it('always keeps the group the address names', () => {
+    expect(kr({ sub: 'partial' }, groups[0]?.id)).toEqual(['방어 레벨 +2'])
+  })
+
+  it('counts the classes under the other filters', () => {
+    expect(jpenCounts(groups, { ...none, sub: 'same' })).toEqual({ same: 1, explained: 1, partial: 0 })
+    expect(jpenCounts(groups, { ...none, group: 'StoryData' })).toEqual({ same: 0, explained: 1, partial: 0 })
   })
 })

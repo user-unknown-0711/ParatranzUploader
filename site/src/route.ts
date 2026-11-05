@@ -2,16 +2,20 @@ import type { Lang, ReviewTab } from './types'
 
 /**
  * Where the page is, as the hash of its URL says: #/, #/f/<path>?u=<key>, #/s?q=…&lang=…&re=1,
- * #/r/<untranslated|checks>?group=…&kind=…&q=…&id=… (kind: the status of the untranslated, the code of a check).
+ * #/r/<untranslated|checks|inconsistent>?group=…&kind=…&q=…&mode=jpen&id=… (kind: the status of the
+ * untranslated, the code of a check, the JP/EN class of an inconsistent text; mode: show the JP/EN of each translation).
  */
 export type Route =
   | { kind: 'home' }
   | { kind: 'file'; path: string; ptr?: string }
   | { kind: 'search'; q: string; lang: Lang; re: boolean }
-  | { kind: 'review'; tab: ReviewTab; group: string; sub: string; q: string; id?: string }
+  | { kind: 'review'; tab: ReviewTab; group: string; sub: string; q: string; mode: ReviewMode; id?: string }
+
+/** How the inconsistent translations are shown: by KR alone, or with the JP and EN of each translation. */
+export type ReviewMode = 'kr' | 'jpen'
 
 const LANGS: readonly string[] = ['kr', 'jp', 'en', 'zh']
-const REVIEW_TABS: readonly string[] = ['untranslated', 'checks']
+const REVIEW_TABS: readonly string[] = ['untranslated', 'checks', 'inconsistent']
 
 /** decodeURIComponent that keeps the text as it is where the escape is not valid. */
 function decode(s: string): string {
@@ -70,6 +74,7 @@ export function parseHash(hash: string): Route {
       group: query.get('group') ?? '',
       sub: query.get('kind') ?? '',
       q: query.get('q') ?? '',
+      mode: query.get('mode') === 'jpen' ? 'jpen' : 'kr',
       ...(id ? { id } : {}),
     }
   }
@@ -88,11 +93,12 @@ export function searchHref(q: string, lang: Lang, re: boolean): string {
 }
 
 /** The hash of a page of the review, with the filters and the item to scroll to that are given. */
-export function reviewHref(tab: ReviewTab, opts: { group?: string; sub?: string; q?: string; id?: string } = {}): string {
+export function reviewHref(tab: ReviewTab, opts: { group?: string; sub?: string; q?: string; mode?: ReviewMode; id?: string } = {}): string {
   const pairs: [string, string][] = []
   if (opts.group) pairs.push(['group', opts.group])
   if (opts.sub) pairs.push(['kind', opts.sub])
   if (opts.q) pairs.push(['q', opts.q])
+  if (opts.mode === 'jpen') pairs.push(['mode', 'jpen'])
   if (opts.id) pairs.push(['id', opts.id])
   const query = pairs.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')
   return `#/r/${tab}${query ? `?${query}` : ''}`

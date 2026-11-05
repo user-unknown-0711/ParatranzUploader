@@ -56,6 +56,16 @@ site/（Preact＋Vite 原始碼）───────────────�
 | `hangul` | 韓文殘留 | TW 含韓文 |
 | `llc` | LLC 匯入未校對 | TW 以 `[LLC]` 開頭 |
 
+**不一致的譯法**（2026-11-06 追加，做法同 limbus-translate 審核頁的「不一致的譯法」與「連同 JP/EN」檢視）：已翻譯（`tw`）的單位依（群組、欄位、KR 文字）分組，一組有兩種以上的 TW 譯法就是一項，單位最多的在前。每種譯法再依該單位的（JP, EN）分子組，並依此把整組分類：
+
+| 分類 | 條件 |
+|---|---|
+| `same` JP/EN 相同 | 所有單位的 JP 與 EN 都相同：多半是真的不一致 |
+| `explained` JP/EN 可解釋 | 不只一種 (JP, EN)，而且每一種只對到一種譯法：KR 比 JP、EN 籠統，譯法不同可能是對的 |
+| `partial` 部分可解釋 | 其他 |
+
+沒有 JP 或 EN 時「沒有」算一個值。分類只是給人看的提示，不替人決定。
+
 ## 5. 資料（`-site` 的輸出，format 1）
 
 所有 JSON 為 UTF-8、無縮排；同樣的輸入產生相同的輸出。
@@ -66,13 +76,14 @@ site/（Preact＋Vite 原始碼）───────────────�
 - `models.json`：`ScenarioModelCodes-AutoCreated.json` 的 `{model: {kr, jp, en, zh}}`，劇本模式用它顯示只有 `model` 的台詞的說話者（與遊戲相同）
 - `search/keys.json` 與 `search/{kr,jp,en,zh}.json`：全文搜尋（不含 `same`）
 - `review/checks.json`：`items[{id, code, kr, zh, miss[], extra[], keys[]}]`，`keys` 為 `<path>|<key>`
+- `review/inconsistent.json`：`items[{id, group, field, kr, jp?, en?, units, variants[{zh, count, keys[], jpen[{jp?, en?, count, keys[]}]}], jpen_class}]`；`id` 為 `inconsistent/<群組、欄位、KR 的雜湊>`，release 之間穩定；`meta.inconsistent` 是各分類的組數，`index.files[].inconsistent` 與單位的 `v` 標出涉及的單位
 
 ## 6. 前端
 
 - `#/`：首頁（來源版本、進度、各狀態與檢查數量）
 - `#/f/<path>?u=<key>`：檔案檢視（表格／劇本模式、語言開關、狀態篩選、「只看需要審核的單位」、上一檔／下一檔、深連結）
 - `#/s?q=&lang=&re=1`：全文搜尋
-- `#/r/untranslated`、`#/r/checks`：審核頁（未翻譯依檔案統計；格式檢查依代碼分組，可依群組、代碼、文字篩選）
+- `#/r/untranslated`、`#/r/checks`、`#/r/inconsistent?mode=jpen`：審核頁（未翻譯依檔案統計；格式檢查依代碼分組；不一致的譯法列出每種譯法、單位數、與最多那種的差異，可切換「連同 JP/EN」並依分類篩選；都可依群組、文字篩選）。檔案頁的譯文下有「不一致」標籤連到該組
 - 每頁 `noindex`；不使用外部 CDN；設定存在 `localStorage`
 
 ## 7. 建置與部署（`.github/workflows/pages.yml`）

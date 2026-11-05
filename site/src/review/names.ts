@@ -1,4 +1,4 @@
-import type { CheckCode, Status, Unit } from '../types'
+import type { CheckCode, JPENClass, Status, Unit } from '../types'
 
 /** What each status is called, and what it means. */
 export const STATUS_INFO: Record<Status, { name: string; desc: string }> = {
@@ -29,8 +29,17 @@ export function checkCode(id: string): CheckCode | undefined {
   return (CHECK_CODES as readonly string[]).includes(code) ? (code as CheckCode) : undefined
 }
 
-/** Whether a reviewer has to look at the unit: it is not translated, or its translation has findings. */
+/** The badge of an inconsistent group, and what it means. */
+export const JPEN_INFO: Record<JPENClass, { name: string; desc: string }> = {
+  same: { name: 'JP/EN 相同', desc: '所有單位的 JP 與 EN 都相同：譯法不同多半是真的不一致' },
+  explained: { name: 'JP/EN 可解釋', desc: '每一種 JP/EN 只對到一種譯法：KR 比 JP、EN 籠統，譯法不同可能是對的' },
+  partial: { name: '部分可解釋', desc: '有些 JP/EN 對到兩種以上的譯法' },
+}
+
+export const JPEN_CLASSES: readonly JPENClass[] = ['same', 'explained', 'partial']
+
+/** Whether a reviewer has to look at the unit: it is not translated, its translation has findings, or its text is translated in more than one way. */
 export function needsReview(u: Unit | undefined): boolean {
   if (u === undefined) return false
-  return UNTRANSLATED.includes(u.s) || (u.w?.length ?? 0) > 0
+  return UNTRANSLATED.includes(u.s) || (u.w?.length ?? 0) > 0 || u.v !== undefined
 }

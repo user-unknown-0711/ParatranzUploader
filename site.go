@@ -70,15 +70,17 @@ type siteAssetsInfo struct {
 }
 
 type siteMeta struct {
-	Format  int            `json:"format"`
-	Source  siteSource     `json:"source"`
-	Langs   []string       `json:"langs"`
-	Files   int            `json:"files"`
-	Units   int            `json:"units"`
-	Status  map[string]int `json:"status"`
-	Checks  map[string]int `json:"checks"`
-	Absent  int            `json:"absent"`
-	Orphans []string       `json:"orphans"`
+	Format int            `json:"format"`
+	Source siteSource     `json:"source"`
+	Langs  []string       `json:"langs"`
+	Files  int            `json:"files"`
+	Units  int            `json:"units"`
+	Status map[string]int `json:"status"`
+	Checks map[string]int `json:"checks"`
+	// The number of texts translated in more than one way, by whether JP and EN tell the ways apart.
+	Inconsistent map[string]int `json:"inconsistent"`
+	Absent       int            `json:"absent"`
+	Orphans      []string       `json:"orphans"`
 }
 
 type siteGroup struct {
@@ -99,8 +101,10 @@ type siteFileSummary struct {
 	Units    int            `json:"units"`
 	Status   map[string]int `json:"status"`
 	Checks   int            `json:"checks"`
-	Missing  siteMissing    `json:"missing"`
-	Absent   bool           `json:"absent,omitempty"`
+	// The number of units whose text is translated in more than one way.
+	Inconsistent int         `json:"inconsistent"`
+	Missing      siteMissing `json:"missing"`
+	Absent       bool        `json:"absent,omitempty"`
 }
 
 type siteIndex struct {
@@ -121,11 +125,19 @@ type siteUnit struct {
 	W  []string `json:"w,omitempty"`
 	// The model of the dataList element, where it has no teller: the game shows the model's name.
 	M string `json:"m,omitempty"`
+	// The ID of the inconsistent translations the unit is one of.
+	V string `json:"v,omitempty"`
 }
 
 type siteFileData struct {
 	Path  string     `json:"path"`
 	Units []siteUnit `json:"units"`
+}
+
+// siteBuilt is one file of the site: its units, and what the index says of it.
+type siteBuilt struct {
+	summary siteFileSummary
+	data    siteFileData
 }
 
 // siteCheck is one check finding: a code about one KR text and its translation, with every unit that has the pair.
@@ -181,11 +193,7 @@ func buildSite(out, twRoot, assetsRoot, sourcePath string) error {
 		return err
 	}
 
-	type built struct {
-		summary siteFileSummary
-		data    siteFileData
-	}
-	files := []built{}
+	files := []siteBuilt{}
 	checks := map[string]*siteCheck{}
 	known := map[string]bool{}
 
@@ -196,7 +204,7 @@ func buildSite(out, twRoot, assetsRoot, sourcePath string) error {
 			zap.S().Warnln("skip file for site", p, err)
 			continue
 		}
-		files = append(files, built{summary, data})
+		files = append(files, siteBuilt{summary, data})
 	}
 
 	sort.SliceStable(files, func(a, b int) bool {
@@ -213,15 +221,22 @@ func buildSite(out, twRoot, assetsRoot, sourcePath string) error {
 	}
 
 	meta := siteMeta{
-		Format:  siteFormat,
-		Source:  source,
-		Langs:   []string{"kr", "jp", "en", "zh"},
-		Status:  map[string]int{},
-		Checks:  map[string]int{},
-		Orphans: orphans,
+		Format:       siteFormat,
+		Source:       source,
+		Langs:        []string{"kr", "jp", "en", "zh"},
+		Status:       map[string]int{},
+		Checks:       map[string]int{},
+		Inconsistent: map[string]int{jpenSame: 0, jpenExplained: 0, jpenPartial: 0},
+		Orphans:      orphans,
 	}
 	for _, c := range siteCheckCodes {
 		meta.Checks[c] = 0
+	}
+
+	// Before the index is made: it counts the inconsistent units of each file.
+	inconsistent := siteFindInconsistent(files)
+	for _, item := range inconsistent {
+		meta.Inconsistent[item.Class]++
 	}
 
 	index := siteIndex{Groups: []siteGroup{}, Files: []siteFileSummary{}}
@@ -322,11 +337,14 @@ func buildSite(out, twRoot, assetsRoot, sourcePath string) error {
 	if err := write("review/checks.json", map[string]any{"items": items}); err != nil {
 		return err
 	}
+	if err := write("review/inconsistent.json", map[string]any{"items": inconsistent}); err != nil {
+		return err
+	}
 	if err := write("models.json", siteModels(twRoot, assetsRoot)); err != nil {
 		return err
 	}
 
-	zap.S().Infow("site data written", "files", meta.Files, "units", meta.Units, "status", meta.Status, "checks", meta.Checks, "absent", meta.Absent, "orphans", len(meta.Orphans))
+	zap.S().Infow("site data written", "files", meta.Files, "units", meta.Units, "status", meta.Status, "checks", meta.Checks, "inconsistent", meta.Inconsistent, "absent", meta.Absent, "orphans", len(meta.Orphans))
 	return nil
 }
 

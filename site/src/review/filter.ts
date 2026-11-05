@@ -1,4 +1,4 @@
-import type { CheckItem, FileSummary, Index } from '../types'
+import type { CheckItem, FileSummary, InconsistentItem, Index, JPENClass } from '../types'
 
 /** What the address says of the filters of a page of the review. */
 export interface ReviewFilter {
@@ -62,4 +62,26 @@ export function findingMark(c: Pick<CheckItem, 'code' | 'miss' | 'extra'>): RegE
   })
   if (parts.length === 0) return undefined
   return new RegExp([...new Set(parts)].join('|'), c.code === 'tag' ? 'gi' : 'g')
+}
+
+/**
+ * The inconsistent texts of the JP/EN class `sub`, of the group, and with the text in their ID, KR, translations,
+ * the JP and EN of any of their units, or keys. The one the address names always stays.
+ */
+export function filterInconsistent(items: InconsistentItem[], f: ReviewFilter, target?: string): InconsistentItem[] {
+  const needle = f.q.trim().toLowerCase()
+  return items.filter(
+    (c) =>
+      c.id === target ||
+      ((f.sub === '' || c.jpen_class === f.sub) &&
+        (f.group === '' || c.group === f.group) &&
+        (needle === '' || [c.id, c.field, c.kr, c.jp, c.en, ...c.variants.flatMap((v) => [v.zh, ...v.keys, ...v.jpen.flatMap((j) => [j.jp, j.en])])].some((t) => t !== undefined && t.toLowerCase().includes(needle)))),
+  )
+}
+
+/** How many groups of each JP/EN class the other filters leave. */
+export function jpenCounts(items: InconsistentItem[], f: ReviewFilter): Record<JPENClass, number> {
+  const counts: Record<JPENClass, number> = { same: 0, explained: 0, partial: 0 }
+  for (const c of filterInconsistent(items, { ...f, sub: '' })) counts[c.jpen_class]++
+  return counts
 }

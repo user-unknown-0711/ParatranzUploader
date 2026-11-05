@@ -10,7 +10,8 @@ export const LANG_LABEL: Record<Lang, string> = { kr: 'KR', jp: 'JP', en: 'EN', 
 function ZhMeta({ units }: { units: readonly Unit[] }) {
   const statuses = [...new Set(units.map((u) => u.s))].filter((s) => s !== 'tw')
   const findings = [...new Set(units.flatMap((u) => u.w ?? []))]
-  if (statuses.length === 0 && findings.length === 0) return null
+  const groups = [...new Set(units.flatMap((u) => (u.v === undefined ? [] : [u.v])))]
+  if (statuses.length === 0 && findings.length === 0 && groups.length === 0) return null
   return (
     <span class="cell-meta">
       {statuses.map((s) => (
@@ -25,6 +26,11 @@ function ZhMeta({ units }: { units: readonly Unit[] }) {
           </a>
         )
       })}
+      {groups.map((id) => (
+        <a key={id} class="chip chip-sugg" href={reviewHref('inconsistent', { id, mode: 'jpen' })} title="同一句原文在同一群組有不只一種譯法">
+          不一致
+        </a>
+      ))}
     </span>
   )
 }

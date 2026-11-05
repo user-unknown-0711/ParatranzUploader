@@ -29,6 +29,8 @@ export interface Meta {
   status: Partial<Record<Status, number>>
   /** The number of findings of each check code. */
   checks: Partial<Record<CheckCode, number>>
+  /** The number of texts translated in more than one way, by JP/EN class. */
+  inconsistent: Partial<Record<JPENClass, number>>
   /** The KR files the release has no file for. */
   absent: number
   /** The release files that have no KR file. */
@@ -53,6 +55,8 @@ export interface FileSummary {
   status: Partial<Record<Status, number>>
   /** The number of units that have check findings. */
   checks: number
+  /** The number of units whose text is translated in more than one way. */
+  inconsistent: number
   /** The KR strings of the file that the language has no string for. */
   missing: { en: number; jp: number }
   /** The release has no such file. */
@@ -96,6 +100,8 @@ export interface Unit {
   w?: string[]
   /** The model of its dataList element, where the element has no teller: the game shows the model's name. */
   m?: string
+  /** The ID of the inconsistent translations the unit is one of. */
+  v?: string
 }
 
 /** data/models.json: the name of each model in each language, by model ID. */
@@ -121,8 +127,44 @@ export interface CheckItem {
   keys: string[]
 }
 
+/** Whether JP and EN tell the translations of an inconsistent group apart. */
+export type JPENClass = 'same' | 'explained' | 'partial'
+
+/** Units of a translation with one JP and one EN string; jp or en is left out where the units have none. */
+export interface JPENGroup {
+  jp?: string
+  en?: string
+  count: number
+  keys: string[]
+}
+
+/** One translation of an inconsistent text, with every unit that shows it. */
+export interface Variant {
+  zh: string
+  count: number
+  /** Unit keys ("<file path>|<key>"), in the order of the index. */
+  keys: string[]
+  /** The units of the translation by their JP and EN, the most first. */
+  jpen: JPENGroup[]
+}
+
+/** One item of review/inconsistent.json: a KR text of one group and field, translated in more than one way. */
+export interface InconsistentItem {
+  id: string
+  group: string
+  field: string
+  kr: string
+  /** The JP and EN of the first unit of the most used translation. */
+  jp?: string
+  en?: string
+  units: number
+  /** The most used first. */
+  variants: Variant[]
+  jpen_class: JPENClass
+}
+
 /** The pages of the review. */
-export type ReviewTab = 'untranslated' | 'checks'
+export type ReviewTab = 'untranslated' | 'checks' | 'inconsistent'
 
 /** The `lang` attribute of the text of each language, so that the browser picks the right glyphs. */
 export const LANG_ATTR: Record<Lang, string> = {

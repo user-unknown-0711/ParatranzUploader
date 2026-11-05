@@ -82,12 +82,15 @@ describe('App', () => {
     await loaded(el)
     go('#/f/Skills_personality-99.json')
     await vi.waitFor(() => expect(el.querySelectorAll('.tbl .trow:not(.thead)').length).toBeGreaterThan(0))
-    // "no translation needed" is hidden by default: 11 units, 2 of them the same as KR
-    expect(el.querySelector('.file-count')?.textContent).toBe('顯示 9 / 11 個單位')
+    // "no translation needed" is hidden by default: 13 units, 2 of them the same as KR
+    expect(el.querySelector('.file-count')?.textContent).toBe('顯示 11 / 13 個單位')
     expect([...el.querySelectorAll('.cell-zh .status')].map((e) => e.textContent)).toEqual(['英文暫代', '英文暫代', '韓文未譯'])
-    const chips = [...el.querySelectorAll<HTMLAnchorElement>('.cell-zh a.chip')]
+    const chips = [...el.querySelectorAll<HTMLAnchorElement>('.cell-zh a.chip-warn')]
     expect(chips.map((a) => a.textContent)).toEqual(['關鍵字不符', '佔位符不符', '標籤不符'])
     expect(chips[0]?.getAttribute('href')).toMatch(/^#\/r\/checks\?id=keyword%2F/)
+    const same = [...el.querySelectorAll<HTMLAnchorElement>('.cell-zh a.chip-sugg')]
+    expect(same.map((a) => a.textContent)).toEqual(['不一致', '不一致'])
+    expect(same[0]?.getAttribute('href')).toMatch(/^#\/r\/inconsistent\?mode=jpen&id=inconsistent%2F/)
   })
 
   it('reads a story as a script, with the speaker the game takes from the model', async () => {
@@ -95,7 +98,7 @@ describe('App', () => {
     await loaded(el)
     go('#/f/StoryData/S9999.json')
     await vi.waitFor(() => expect(el.querySelector('.line-model .cell-zh')?.textContent).toBe('李箱'))
-    expect(el.querySelectorAll('.passage')).toHaveLength(6)
+    expect(el.querySelectorAll('.passage')).toHaveLength(8)
     expect(el.querySelector('.line-model .cell-en')?.textContent).toBe('Yi Sang')
   })
 
@@ -115,7 +118,7 @@ describe('App', () => {
     const link = el.querySelector<HTMLAnchorElement>('.rv-file a.rv-path')
     expect(link?.textContent).toBe('Skills_personality-99.json')
     act(() => link?.click())
-    await vi.waitFor(() => expect(el.querySelector('.file-count')?.textContent).toBe('顯示 5 / 11 個單位'))
+    await vi.waitFor(() => expect(el.querySelector('.file-count')?.textContent).toBe('顯示 7 / 13 個單位'))
     expect(el.querySelector<HTMLInputElement>('[data-setting="reviewOnly"]')?.checked).toBe(true)
   })
 
@@ -132,5 +135,22 @@ describe('App', () => {
     go(`#/r/checks?kind=tag&id=${encodeURIComponent(id)}`)
     await vi.waitFor(() => expect(el.querySelectorAll('.rv-card')).toHaveLength(2))
     expect(el.querySelector('.rv-card.is-target')?.getAttribute('data-id')).toBe(id)
+  })
+
+  it('lists the texts translated in more than one way, with what differs and, by choice, their JP and EN', async () => {
+    const el = mount()
+    await loaded(el)
+    go('#/r/inconsistent')
+    await vi.waitFor(() => expect(el.querySelectorAll('.rv-card')).toHaveLength(2))
+    const cards = [...el.querySelectorAll('.rv-card')]
+    expect(cards.map((c) => c.querySelector('.rv-badge')?.textContent)).toEqual(['JP/EN 相同', 'JP/EN 可解釋'])
+    // The space the second way has is marked as what differs.
+    expect(cards[0]?.querySelector('.rv-var:not(.is-top) .rv-d')).not.toBeNull()
+    expect(el.querySelector('.rv-jpens')).toBeNull()
+
+    go('#/r/inconsistent?kind=explained&mode=jpen')
+    await vi.waitFor(() => expect(el.querySelectorAll('.rv-card')).toHaveLength(1))
+    expect([...el.querySelectorAll('.rv-jpen-en')].map((e) => e.textContent)).toEqual(["Middle's Little Brother", "Middle's Little Sister"])
+    expect(el.querySelector<HTMLSelectElement>('select[name="kind"]')?.selectedOptions[0]?.textContent).toBe('JP/EN 可解釋（1）')
   })
 })

@@ -71,9 +71,9 @@ export function Directory({ index, query, current }: DirectoryProps) {
                     <li key={f.path}>
                       <a href={fileHref(f.path)} aria-current={f.path === current ? 'page' : undefined} class={f.absent ? 'is-absent' : undefined}>
                         <span class="dir-path">{f.path}</span>
-                        {(todo > 0 || f.checks > 0) && (
-                          <span class="dir-todo" title={`未翻譯 ${todo}、格式檢查 ${f.checks}`}>
-                            {f.absent ? '未收錄' : todo + f.checks}
+                        {(todo > 0 || f.checks > 0 || f.inconsistent > 0) && (
+                          <span class="dir-todo" title={`未翻譯 ${todo}、格式檢查 ${f.checks}、不一致 ${f.inconsistent}`}>
+                            {f.absent ? '未收錄' : todo + f.checks + f.inconsistent}
                           </span>
                         )}
                         {f.label !== '' && <span class="dir-label">{f.label}</span>}

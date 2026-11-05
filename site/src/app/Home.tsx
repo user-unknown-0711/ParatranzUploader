@@ -1,5 +1,5 @@
 import { reviewHref } from '../route'
-import { CHECK_CODES, CHECK_INFO, STATUS_INFO } from '../review/names'
+import { CHECK_CODES, CHECK_INFO, JPEN_CLASSES, JPEN_INFO, STATUS_INFO } from '../review/names'
 import { STATUSES } from '../settings'
 import type { Index, Meta } from '../types'
 
@@ -23,6 +23,7 @@ export function Home({ meta, index, onOpenDirectory }: HomeProps) {
   const { release, assets } = meta.source
   const total = meta.units || 1
   const checks = CHECK_CODES.reduce((n, c) => n + (meta.checks[c] ?? 0), 0)
+  const inconsistent = JPEN_CLASSES.reduce((n, c) => n + (meta.inconsistent[c] ?? 0), 0)
   return (
     <section class="home">
       <h1>Limbus 繁中譯文檢視</h1>
@@ -102,6 +103,19 @@ export function Home({ meta, index, onOpenDirectory }: HomeProps) {
         ))}
       </ul>
 
+      <h2>
+        <a href={reviewHref('inconsistent', { mode: 'jpen' })}>不一致的譯法</a> <span class="muted">共 {number.format(inconsistent)} 組</span>
+      </h2>
+      <p>同一群組、同一欄位的同一句 KR 有不只一種譯法。依 JP、EN 是否也不同分成：</p>
+      <ul class="legend">
+        {JPEN_CLASSES.map((c) => (
+          <li key={c}>
+            <a href={reviewHref('inconsistent', { sub: c, mode: 'jpen' })}>{JPEN_INFO[c].name}</a> <b>{number.format(meta.inconsistent[c] ?? 0)}</b>
+            <span class="muted">：{JPEN_INFO[c].desc}</span>
+          </li>
+        ))}
+      </ul>
+
       <h2>使用方式</h2>
       <ul class="howto">
         <li>
@@ -110,7 +124,7 @@ export function Home({ meta, index, onOpenDirectory }: HomeProps) {
             開啟目錄
           </button>
         </li>
-        <li>「審核」列出還沒翻譯的檔案與格式檢查的項目，每一項都連到所在檔案的那一列。</li>
+        <li>「審核」列出還沒翻譯的檔案、格式檢查的項目與不一致的譯法，每一項都連到所在檔案的那一列。</li>
         <li>檔案頁的欄位名稱滑過會顯示 Paratranz 的 key（例如 <code>dataList-&gt;0-&gt;content</code>），點一下複製這一列的連結。</li>
         <li>「全文搜尋」在選定語言的所有字串中找文字，可用正規表示式。</li>
         <li>上方的語言開關決定顯示哪些語言欄；選擇會記在這個瀏覽器。</li>

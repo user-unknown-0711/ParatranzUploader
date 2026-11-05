@@ -79,10 +79,10 @@ describe('searchCorpus', () => {
   })
 
   it('does not count a string that has no text', () => {
-    // five of the 27 strings of the jp corpus are empty: the language has no string for them
-    expect(keys).toHaveLength(27)
+    // seven of the 33 strings of the jp corpus are empty: the language has no string for them
+    expect(keys).toHaveLength(33)
     const { hits, total } = searchCorpus(keys, stripped('jp'), matcher('.*', true))
-    expect(total).toBe(22)
+    expect(total).toBe(26)
     expect(hits.filter((h) => h.file === 3)).toEqual([])
     expect(hits.map((h) => h.ptr)).not.toContain('dataList->2->coinlist->0->coindescs->0->desc')
   })

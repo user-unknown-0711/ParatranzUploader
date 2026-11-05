@@ -14,7 +14,7 @@ function unit(p: string, f: string, i: number, extra: Partial<Unit> = {}): Unit 
 describe('groupEntries and passages', () => {
   it('makes one passage of each dataList element, with the place where it changes', () => {
     const shown = passages(groupEntries(story), defaultSettings())
-    expect(shown).toHaveLength(6)
+    expect(shown).toHaveLength(8)
     expect(shown[0]?.divider?.zh).toBe('4區 後巷')
     expect(shown[1]?.teller?.zh).toBe('但丁')
     expect(shown[1]?.title?.zh).toBe('管理人')
@@ -42,14 +42,16 @@ describe('visibleUnits', () => {
     expect(visibleUnits(skills, { ...defaultSettings(), statuses: { tw: true, en: true, kr: true, missing: true, same: true } })).toHaveLength(skills.length)
   })
 
-  it('keeps only what needs a review with reviewOnly: untranslated, or with findings', () => {
+  it('keeps only what needs a review with reviewOnly: untranslated, with findings, or translated in more than one way', () => {
     const shown = visibleUnits(skills, { ...defaultSettings(), reviewOnly: true })
-    expect(shown.map((u) => `${u.p}:${u.s}:${u.w?.length ?? 0}`)).toEqual([
+    expect(shown.map((u) => `${u.p}:${u.s}:${u.w?.length ?? 0}${u.v ? ':v' : ''}`)).toEqual([
       'dataList->0->desc:tw:1',
       'dataList->1->name:en:0',
       'dataList->1->desc:en:0',
       'dataList->2->name:kr:0',
+      'dataList->2->desc:tw:0:v',
       'dataList->4->desc:tw:2',
+      'dataList->5->desc:tw:0:v',
     ])
   })
 })

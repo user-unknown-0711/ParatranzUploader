@@ -1,4 +1,4 @@
-import type { CheckItem, FileData, Index, Meta, Models } from './types'
+import type { CheckItem, FileData, InconsistentItem, Index, Meta, Models } from './types'
 
 /** The version of the layout and keys of the data that this page reads. */
 const FORMAT = 1
@@ -86,6 +86,14 @@ export function loadFile(path: string): Promise<FileData> {
   return load(rel, (doc) => {
     if (!isRecord(doc) || !Array.isArray(doc.units)) throw new DataError('format', `${rel}: no units`)
     return doc as unknown as FileData
+  })
+}
+
+/** data/review/inconsistent.json: the texts translated in more than one way. */
+export function loadInconsistent(): Promise<InconsistentItem[]> {
+  return load('review/inconsistent.json', (doc) => {
+    if (!isRecord(doc) || !Array.isArray(doc.items)) throw new DataError('format', 'review/inconsistent.json: no items')
+    return doc.items as InconsistentItem[]
   })
 }
 

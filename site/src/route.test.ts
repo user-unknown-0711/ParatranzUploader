@@ -25,15 +25,17 @@ describe('parseHash', () => {
   })
 
   it('reads the tabs of the review, the untranslated by default', () => {
-    expect(parseHash('#/r')).toEqual({ kind: 'review', tab: 'untranslated', group: '', sub: '', q: '' })
+    expect(parseHash('#/r')).toEqual({ kind: 'review', tab: 'untranslated', group: '', sub: '', q: '', mode: 'kr' })
     expect(parseHash(reviewHref('checks', { group: 'StoryData', sub: 'tag', q: '<b>', id: 'tag/0a' }))).toEqual({
       kind: 'review',
       tab: 'checks',
       group: 'StoryData',
       sub: 'tag',
       q: '<b>',
+      mode: 'kr',
       id: 'tag/0a',
     })
+    expect(parseHash(reviewHref('inconsistent', { sub: 'same', mode: 'jpen' }))).toEqual({ kind: 'review', tab: 'inconsistent', group: '', sub: 'same', q: '', mode: 'jpen' })
     expect(parseHash('#/r/suggestions')).toEqual({ kind: 'home' })
   })
 })

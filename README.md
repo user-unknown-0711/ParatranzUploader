@@ -11,7 +11,7 @@ Installation instructions are available [here](./docs/install-custom-lt.md).
 After every release, `.github/workflows/pages.yml` publishes a static site (`https://<owner>.github.io/<repo>/`) that puts the TW text of the release next to the KR, JP and EN texts of the assets repo, and shows what still needs a reviewer:
 
 - **Viewer**: every file of the assets repo, one row per string (table), or one passage per line for stories (script, with the speaker the game shows); a deep link per string; full-text search (substring or regular expression) in any language. Hovering the field name shows the Paratranz key (`dataList->0->content`).
-- **Review** (`#/r`): untranslated strings by file (still English, still Korean, or missing from the release), and format checks of the translations against KR: `{0}` placeholders, `[Keyword]` codes, TextMeshPro tags, leftover Hangul, and `[LLC]` imports. Each item links to its row.
+- **Review** (`#/r`): untranslated strings by file (still English, still Korean, or missing from the release); format checks of the translations against KR: `{0}` placeholders, `[Keyword]` codes, TextMeshPro tags, leftover Hangul, and `[LLC]` imports; and inconsistent translations: one KR text of one file group and field translated in more than one way, with what differs from the most used translation and, in the "連同 JP/EN" view, the JP and EN of each translation (a badge says whether JP/EN explain the difference: KR is often vaguer than JP and EN). Each item links to its rows.
 
 How it is built (design: [`docs/superpowers/specs/2026-11-05-pages-viewer-design.md`](./docs/superpowers/specs/2026-11-05-pages-viewer-design.md)):
 

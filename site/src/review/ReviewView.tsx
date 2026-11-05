@@ -1,13 +1,14 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { Notice } from '../app/Notice'
-import { DataError, loadChecks } from '../data'
+import { DataError, loadChecks, loadInconsistent } from '../data'
 import { fileHref, reviewHref, type Route } from '../route'
 import type { Settings } from '../settings'
 import { TmpText } from '../tmp/TmpText'
-import { LANG_ATTR, type CheckItem, type Index, type Lang, type Meta } from '../types'
-import { filterChecks, filterUntranslated, findingMark, untranslatedCount } from './filter'
-import { CHECK_CODES, CHECK_INFO, STATUS_INFO } from './names'
+import { LANG_ATTR, type CheckItem, type InconsistentItem, type Index, type Lang, type Meta } from '../types'
+import { filterChecks, filterInconsistent, filterUntranslated, findingMark, jpenCounts, untranslatedCount } from './filter'
+import { InconsistentCard } from './InconsistentCard'
+import { CHECK_CODES, CHECK_INFO, JPEN_CLASSES, JPEN_INFO, STATUS_INFO } from './names'
 
 type ReviewRoute = Extract<Route, { kind: 'review' }>
 
@@ -15,8 +16,8 @@ const PAGE = 100
 const number = new Intl.NumberFormat('en-US')
 
 /** Goes to the page with other filters; a change of the text replaces the entry so that typing leaves one step in the history. */
-function go(route: ReviewRoute, change: Partial<Pick<ReviewRoute, 'group' | 'sub' | 'q'>>, replace = false): void {
-  const href = reviewHref(route.tab, { group: route.group, sub: route.sub, q: route.q, ...change })
+function go(route: ReviewRoute, change: Partial<Pick<ReviewRoute, 'group' | 'sub' | 'q' | 'mode'>>, replace = false): void {
+  const href = reviewHref(route.tab, { group: route.group, sub: route.sub, q: route.q, mode: route.mode, ...change })
   if (replace) location.replace(href)
   else location.hash = href
 }
@@ -49,11 +50,22 @@ interface ToolsProps {
   kindLabel: string
   placeholder: string
   count: number
+  /** The 只看 KR／連同 JP/EN switch of the inconsistent translations. */
+  modes?: boolean
 }
 
-function Tools({ route, groups, kinds, kindLabel, placeholder, count }: ToolsProps) {
+function Tools({ route, groups, kinds, kindLabel, placeholder, count, modes }: ToolsProps) {
   return (
     <div class="rv-tools">
+      {modes && (
+        <label>
+          檢視
+          <select name="mode" value={route.mode} onChange={(e) => go(route, { mode: e.currentTarget.value === 'jpen' ? 'jpen' : 'kr' })}>
+            <option value="kr">只看 KR</option>
+            <option value="jpen">連同 JP/EN</option>
+          </select>
+        </label>
+      )}
       <Select name="group" label="群組" value={route.group} options={groups.map((g) => ({ value: g, label: g }))} onChange={(group) => go(route, { group })} />
       <Select name="kind" label={kindLabel} value={route.sub} options={kinds} onChange={(sub) => go(route, { sub })} />
       <input type="search" name="q" placeholder={placeholder} aria-label="篩選文字" value={route.q} onInput={(e) => go(route, { q: e.currentTarget.value }, true)} />
@@ -291,6 +303,64 @@ function Checks({ route, index, raw }: { route: ReviewRoute; index: Index; raw: 
   )
 }
 
+type InconsistentLoaded = { status: 'ready'; items: InconsistentItem[] } | { status: 'error'; error: DataError }
+
+function useInconsistent(): InconsistentLoaded | undefined {
+  const [state, setState] = useState<InconsistentLoaded>()
+  useEffect(() => {
+    let live = true
+    loadInconsistent().then(
+      (items) => live && setState({ status: 'ready', items }),
+      (e: unknown) => live && setState({ status: 'error', error: e instanceof DataError ? e : new DataError('network', String(e)) }),
+    )
+    return () => {
+      live = false
+    }
+  }, [])
+  return state
+}
+
+function Inconsistent({ route, settings }: { route: ReviewRoute; settings: Settings }) {
+  const loaded = useInconsistent()
+  const items = loaded?.status === 'ready' ? loaded.items : []
+  const shown = useMemo(() => filterInconsistent(items, route, route.id), [items, route.group, route.sub, route.q, route.id])
+  const counts = useMemo(() => jpenCounts(items, route), [items, route.group, route.q])
+  const groups = useMemo(() => [...new Set(items.map((c) => c.group))].sort(), [items])
+  const kinds = JPEN_CLASSES.map((c) => ({ value: c, label: `${JPEN_INFO[c].name}（${counts[c]}）` }))
+  const view = { langs: settings.langs, raw: settings.rawTags }
+
+  if (loaded === undefined) return <p role="status">載入中…</p>
+  if (loaded.status === 'error') return <Notice error={loaded.error} />
+  return (
+    <>
+      <Tools route={route} groups={groups} kinds={kinds} kindLabel="JP/EN" placeholder="篩選 KR、JP、EN、TW、檔名" count={shown.length} modes />
+      <p class="rv-lede">
+        同一群組、同一欄位的同一句 KR，在 release 裡有不只一種譯法。KR 常比 JP、EN 籠統，所以「連同 JP/EN」會在每種譯法下列出它的 JP 與 EN：
+        {JPEN_CLASSES.map((c) => (
+          <span key={c}>
+            {' '}
+            <span class={`rv-badge rv-badge-${c}`}>{JPEN_INFO[c].name}</span> {JPEN_INFO[c].desc}。
+          </span>
+        ))}
+      </p>
+      <div class="rv-body">
+        {route.id !== undefined && !shown.some((c) => c.id === route.id) && (
+          <p class="rv-missing" role="status">
+            找不到項目 <code>{route.id}</code>：它可能在新的 release 已經統一了。
+          </p>
+        )}
+        <ItemList
+          key={`${route.group}|${route.sub}|${route.q}`}
+          items={shown}
+          target={route.id}
+          idOf={(c) => c.id}
+          render={(c) => <InconsistentCard key={c.id} item={c} target={c.id === route.id} jpen={route.mode === 'jpen'} shown={view} />}
+        />
+      </div>
+    </>
+  )
+}
+
 export interface ReviewViewProps {
   route: ReviewRoute
   index: Index
@@ -303,9 +373,11 @@ export interface ReviewViewProps {
 export function ReviewView({ route, index, meta, settings, onSettings }: ReviewViewProps) {
   const untranslated = (meta.status.en ?? 0) + (meta.status.kr ?? 0) + (meta.status.missing ?? 0)
   const checks = CHECK_CODES.reduce((n, c) => n + (meta.checks[c] ?? 0), 0)
+  const inconsistent = JPEN_CLASSES.reduce((n, c) => n + (meta.inconsistent[c] ?? 0), 0)
   const tabs = [
     { tab: 'untranslated' as const, name: '未翻譯', n: untranslated, unit: '個單位' },
     { tab: 'checks' as const, name: '格式檢查', n: checks, unit: '項' },
+    { tab: 'inconsistent' as const, name: '不一致的譯法', n: inconsistent, unit: '組' },
   ]
   return (
     <div class="review">
@@ -321,6 +393,7 @@ export function ReviewView({ route, index, meta, settings, onSettings }: ReviewV
       </nav>
       {route.tab === 'untranslated' && <Untranslated route={route} index={index} meta={meta} onReviewFile={() => onSettings({ ...settings, reviewOnly: true })} />}
       {route.tab === 'checks' && <Checks route={route} index={index} raw={settings.rawTags} />}
+      {route.tab === 'inconsistent' && <Inconsistent route={route} settings={settings} />}
     </div>
   )
 }
